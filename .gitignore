@@ -18,6 +18,10 @@ dist/
 .env.*
 !.env.example
 
+# Database
+*.db
+*.sqlite3
+
 # Editors & OS
 .vscode/
 .idea/

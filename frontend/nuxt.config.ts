@@ -2,16 +2,20 @@
 export default defineNuxtConfig({
   devtools: { enabled: false },
 
-  // Proxy /api calls to the FastAPI backend during development,
-  // so the frontend code can simply call `/api/...`.
+  // Vue Flow powers the workflow builder canvas (spec §20).
+  build: {
+    transpile: ["@vue-flow/core", "@vue-flow/background"],
+  },
+
+  // Proxy API and telecom webhooks to FastAPI during development.
   routeRules: {
     "/api/**": { proxy: "http://localhost:8000/api/**" },
+    "/webhooks/**": { proxy: "http://localhost:8000/webhooks/**" },
   },
 
   runtimeConfig: {
     public: {
-      // Override in production with NUXT_PUBLIC_API_BASE.
-      apiBase: "",
+      apiBase: "", // override with NUXT_PUBLIC_API_BASE in production
     },
   },
 

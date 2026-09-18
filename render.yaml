@@ -1,0 +1,44 @@
+# Bridge — Render deployment (spec §35)
+# Backend (FastAPI) + PostgreSQL + Frontend (Nuxt static/server)
+services:
+  - type: web
+    name: bridge-api
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: BRIDGE_DATABASE_URL
+        fromDatabase:
+          name: bridge-db
+          property: connectionString
+      - key: BRIDGE_ENVIRONMENT
+        value: production
+      - key: BRIDGE_DEBUG
+        value: "false"
+      - key: BRIDGE_COMMS_PROVIDER
+        sync: false # set to "africastalking" once credentials exist
+      - key: BRIDGE_AT_USERNAME
+        sync: false
+      - key: BRIDGE_AT_API_KEY
+        sync: false
+      - key: BRIDGE_AT_SENDER_ID
+        sync: false
+      - key: BRIDGE_API_TOKEN
+        generateValue: true
+
+  - type: web
+    name: bridge-web
+    runtime: node
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: node .output/server/index.mjs
+    envVars:
+      - key: NUXT_PUBLIC_API_BASE
+        sync: false # e.g. https://bridge-api.onrender.com
+
+databases:
+  - name: bridge-db
+    plan: basic-256mb
+    postgresMajorVersion: "16"

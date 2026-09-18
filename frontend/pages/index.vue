@@ -1,106 +1,131 @@
 <script setup lang="ts">
-interface Health {
-  status: string;
-  service: string;
-  version: string;
-}
+/** Dashboard (spec §19): is Bridge working? what happened? what's active? failures? */
+import type { Stats } from "~/types";
 
-interface Item {
-  id: number;
-  name: string;
-  description: string;
-}
-
-const config = useRuntimeConfig();
-const apiBase = config.public.apiBase || "";
-
-const health = ref<Health | null>(null);
-const items = ref<Item[]>([]);
-const newName = ref("");
-const newDescription = ref("");
+const api = useApi();
+const stats = ref<Stats | null>(null);
 const error = ref("");
 
-async function fetchHealth() {
-  try {
-    health.value = await $fetch<Health>(`${apiBase}/api/health`);
-  } catch {
-    health.value = null;
-  }
-}
+onMounted(load);
 
-async function fetchItems() {
+async function load() {
   try {
-    items.value = await $fetch<Item[]>(`${apiBase}/api/items`);
-  } catch (e) {
-    error.value = "Could not reach the API. Is the backend running on port 8000?";
-  }
-}
-
-async function addItem() {
-  if (!newName.value.trim()) return;
-  try {
-    await $fetch(`${apiBase}/api/items`, {
-      method: "POST",
-      body: { name: newName.value, description: newDescription.value },
-    });
-    newName.value = "";
-    newDescription.value = "";
+    stats.value = await api.get<Stats>("/api/stats");
     error.value = "";
-    await fetchItems();
   } catch {
-    error.value = "Failed to create item.";
+    error.value = "Could not reach the Bridge API. Start it with: uvicorn app.main:app --reload";
   }
 }
 
-async function removeItem(id: number) {
-  try {
-    await $fetch(`${apiBase}/api/items/${id}`, { method: "DELETE" });
-    await fetchItems();
-  } catch {
-    error.value = "Failed to delete item.";
-  }
-}
-
-onMounted(async () => {
-  await Promise.all([fetchHealth(), fetchItems()]);
+const statusLabel = computed(() => {
+  if (!stats.value) return "…";
+  if (stats.value.failed_runs > 0) return "degraded";
+  return "OK";
 });
+
+function channelBadge(channel: string) {
+  return channel === "voice" ? "badge info" : "badge cyan";
+}
 </script>
 
 <template>
-  <main class="container">
-    <header>
-      <h1>Bridge</h1>
-      <p class="subtitle">FastAPI + Nuxt + Vue starter</p>
-      <p v-if="health" class="badge badge-ok">
-        API online · {{ health.service }} v{{ health.version }}
-      </p>
-      <p v-else class="badge badge-down">
-        API offline — start the backend: <code>uvicorn app.main:app --reload</code>
-      </p>
-    </header>
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">System overview across telecom channels and workflows.</p>
+      </div>
+      <span class="badge" :class="statusLabel === 'OK' ? 'ok' : 'warn'">
+        <span class="dot" :class="statusLabel === 'OK' ? 'ok' : 'warn'" /> Status: {{ statusLabel }}
+      </span>
+    </div>
 
-    <section class="panel">
-      <h2>Add an item</h2>
-      <form class="form" @submit.prevent="addItem">
-        <input v-model="newName" type="text" placeholder="Name" required />
-        <input v-model="newDescription" type="text" placeholder="Description (optional)" />
-        <button type="submit">Add</button>
-      </form>
-    </section>
+    <div v-if="error" class="error-box">{{ error }}</div>
+    <div v-else-if="!stats" class="skeleton card card-pad">Loading…</div>
 
-    <section class="panel">
-      <h2>Items</h2>
-      <p v-if="error" class="error">{{ error }}</p>
-      <p v-if="items.length === 0" class="empty">No items yet — add one above.</p>
-      <ul v-else class="item-list">
-        <li v-for="item in items" :key="item.id" class="item">
-          <div>
-            <strong>{{ item.name }}</strong>
-            <span v-if="item.description" class="desc"> — {{ item.description }}</span>
+    <template v-else>
+      <div class="stat-grid">
+        <div class="card card-pad">
+          <div class="stat-label">Calls</div>
+          <div class="stat-value">{{ stats.calls.toLocaleString() }}</div>
+          <div class="stat-hint muted">voice conversations</div>
+        </div>
+        <div class="card card-pad">
+          <div class="stat-label">SMS</div>
+          <div class="stat-value">{{ stats.sms.toLocaleString() }}</div>
+          <div class="stat-hint muted">message conversations</div>
+        </div>
+        <div class="card card-pad">
+          <div class="stat-label">Workflows</div>
+          <div class="stat-value">{{ stats.active_workflows }}<span class="muted" style="font-size: 15px"> / {{ stats.total_workflows }}</span></div>
+          <div class="stat-hint muted">active / total</div>
+        </div>
+        <div class="card card-pad">
+          <div class="stat-label">Success rate</div>
+          <div class="stat-value" :style="{ color: (stats.success_rate ?? 100) >= 95 ? 'var(--success)' : 'var(--warning)' }">
+            {{ stats.success_rate !== null ? stats.success_rate + "%" : "—" }}
           </div>
-          <button class="danger" @click="removeItem(item.id)">Delete</button>
-        </li>
-      </ul>
-    </section>
-  </main>
+          <div class="stat-hint muted">{{ stats.total_runs }} runs · {{ stats.failed_runs }} failed</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 1rem">
+        <div class="card">
+          <div class="card-pad" style="padding-bottom: 0.4rem">
+            <div class="section-title" style="margin-bottom: 0.4rem">Recent communication</div>
+          </div>
+          <div class="card-pad" style="padding-top: 0">
+            <div v-if="stats.recent_conversations.length === 0" class="empty">
+              No communication yet — trigger a workflow by calling or texting.
+            </div>
+            <table v-else>
+              <thead>
+                <tr><th>From</th><th>Channel</th><th>Languages</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="conversation in stats.recent_conversations" :key="conversation.id">
+                  <td class="mono">{{ conversation.from_number }}</td>
+                  <td><span :class="channelBadge(conversation.channel)">{{ conversation.channel }}</span></td>
+                  <td class="muted">{{ conversation.language || "?" }} → {{ conversation.target_language || "?" }}</td>
+                  <td>
+                    <span class="badge" :class="conversation.status === 'completed' ? 'ok' : conversation.status === 'failed' ? 'err' : 'cyan'">
+                      {{ conversation.status }}
+                    </span>
+                  </td>
+                  <td><NuxtLink :to="`/conversations/${conversation.id}`">View</NuxtLink></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-pad" style="padding-bottom: 0.4rem">
+            <div class="section-title" style="margin-bottom: 0.4rem">Workflow activity</div>
+          </div>
+          <div class="card-pad" style="padding-top: 0">
+            <div v-if="stats.workflow_activity.length === 0" class="empty">No workflows configured.</div>
+            <table v-else>
+              <thead>
+                <tr><th>Workflow</th><th>Runs</th><th>Success</th><th></th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="activity in stats.workflow_activity" :key="activity.workflow_id">
+                  <td style="font-weight: 550">{{ activity.name }}</td>
+                  <td>{{ activity.runs }}</td>
+                  <td>
+                    <span v-if="activity.success_rate !== null" :class="(activity.success_rate ?? 0) >= 95 ? 'badge ok' : 'badge warn'">
+                      {{ activity.success_rate }}%
+                    </span>
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td><NuxtLink :to="`/workflows/${activity.workflow_id}`">Open</NuxtLink></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
 </template>
