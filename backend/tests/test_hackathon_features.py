@@ -6,8 +6,8 @@ Covers the two Africa's Talking tracks added for the hackathon:
 """
 import os
 
-os.environ.setdefault("SEED_DEMO_DATA", "false")
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test_hackathon.db")
+os.environ["SEED_DEMO_DATA"] = "false"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_hackathon.db"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

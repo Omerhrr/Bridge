@@ -17,7 +17,20 @@ const emit = defineEmits<{
   (e: 'drop', type: string, position: { x: number; y: number }): void
 }>()
 
+const rootEl = ref<HTMLElement | null>(null)
 const { screenToFlowCoordinate } = useVueFlow()
+
+/** Add a node at the visual center of the canvas.
+ *  Used by mobile mode, where drag-and-drop from the palette is replaced
+ *  by tap-to-add in the node sheet. */
+function addAtCenter(type: string) {
+  const rect = rootEl.value?.getBoundingClientRect()
+  const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2
+  const y = rect ? rect.top + rect.height / 2 : window.innerHeight / 2
+  emit('drop', type, screenToFlowCoordinate({ x, y }))
+}
+
+defineExpose({ addAtCenter })
 
 function onConnect(connection: Connection) {
   emit('connect', connection)
@@ -40,7 +53,7 @@ function onDrop(event: DragEvent) {
 </script>
 
 <template>
-  <div class="card flex-1 min-w-0 overflow-hidden relative" @drop="onDrop" @dragover.prevent>
+  <div ref="rootEl" class="card flex-1 min-w-0 overflow-hidden relative" @drop="onDrop" @dragover.prevent>
     <VueFlow
       :nodes="nodes"
       :edges="edges"

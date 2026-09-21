@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { NodeMeta } from '~/types'
 
-/** Left panel: node palette grouped by category (spec section 20). */
+/** Node palette grouped by category (spec section 20).
+ *  variant="panel": fixed desktop side panel — nodes are drag-and-drop.
+ *  variant="sheet": mobile bottom sheet — nodes are tap-to-add and emit `add`. */
+const props = defineProps<{ variant?: 'panel' | 'sheet' }>()
+const emit = defineEmits<{ (e: 'add', type: string): void }>()
+
 const store = useWorkflowsStore()
 const search = ref('')
 
@@ -34,7 +39,10 @@ function onDragStart(event: DragEvent, node: NodeMeta) {
 </script>
 
 <template>
-  <aside class="card w-60 shrink-0 flex flex-col overflow-hidden">
+  <aside
+    class="card flex flex-col overflow-hidden"
+    :class="variant === 'sheet' ? 'w-full max-h-[60vh]' : 'w-60 shrink-0'"
+  >
     <div class="p-3 border-b border-line">
       <h2 class="text-sm font-semibold mb-2">Nodes</h2>
       <input v-model="search" type="search" placeholder="Search nodes…" class="input h-8 text-sm" />
@@ -50,6 +58,7 @@ function onDragStart(event: DragEvent, node: NodeMeta) {
             class="p-2 rounded-md border border-line bg-surface hover:border-signal/50 hover:bg-signal-soft/40 cursor-grab active:cursor-grabbing transition-colors"
             :title="node.description"
             @dragstart="onDragStart($event, node)"
+            @click="emit('add', node.type)"
           >
             <p class="text-sm font-medium">{{ node.label }}</p>
             <p class="text-[11px] text-muted leading-snug">{{ node.description }}</p>

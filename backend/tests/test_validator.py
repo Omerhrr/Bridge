@@ -1,8 +1,8 @@
 """Unit tests for workflow validation (spec section 44)."""
 import os
 
-os.environ.setdefault("SEED_DEMO_DATA", "false")
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
+os.environ["SEED_DEMO_DATA"] = "false"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 
 import pytest  # noqa: E402
 

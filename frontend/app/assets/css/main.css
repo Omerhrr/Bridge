@@ -96,3 +96,110 @@ body {
 .vue-flow__handle.handle-error { background: var(--color-error); }
 .vue-flow__controls-button { border-bottom: 1px solid var(--color-line); }
 .vue-flow__minimap { border-radius: 8px; overflow: hidden; }
+
+/* =====================================================================
+   Mobile mode (spec section 18 — "works best in both worlds")
+   The shell root carries .mode-mobile / .mode-desktop from useDeviceMode,
+   so ergonomics follow the *chosen* mode, not just the viewport.
+   ===================================================================== */
+
+/* Mobile bottom tab navigation */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--color-line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.mobile-bottom-nav .tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 58px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-muted);
+  transition: color 0.15s ease;
+}
+.mobile-bottom-nav .tab.active { color: var(--color-signal); }
+
+/* Touch ergonomics: 44px+ targets, 16px inputs (prevents iOS focus zoom) */
+.mode-mobile .btn { height: 2.75rem; padding-inline: 0.9rem; }
+.mode-mobile .input { height: 2.75rem; font-size: 16px; }
+.mode-mobile .card { border-radius: 12px; }
+.mode-mobile h1 { font-size: 1.2rem; }
+.mode-mobile .pill { font-size: 0.8rem; padding: 0.2rem 0.6rem; }
+
+/* ---- Bottom sheet ---- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet-panel {
+  width: 100%;
+  max-width: 640px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.sheet-grip {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-line);
+  margin: 10px auto 2px;
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px 10px;
+  border-bottom: 1px solid var(--color-line);
+}
+.sheet-body {
+  overflow-y: auto;
+  padding: 14px 16px 18px;
+}
+.sheet-enter-active,
+.sheet-leave-active { transition: opacity 0.18s ease; }
+.sheet-enter-active .sheet-panel,
+.sheet-leave-active .sheet-panel { transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1); }
+.sheet-enter-from,
+.sheet-leave-to { opacity: 0; }
+.sheet-enter-from .sheet-panel,
+.sheet-leave-to .sheet-panel { transform: translateY(100%); }
+
+/* ---- PWA install banner ---- */
+.pwa-banner {
+  position: fixed;
+  z-index: 45;
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  .pwa-banner {
+    left: auto;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    width: 340px;
+  }
+}
