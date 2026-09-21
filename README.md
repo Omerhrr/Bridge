@@ -1,0 +1,142 @@
+# Bridge — Telecom Communication Bridge
+
+**Bridge is a visual communication automation platform that uses telecommunications and AI to connect people across language and connectivity barriers — without requiring an app or internet connection.**
+
+A communication event enters the system through one channel and can leave through another:
+
+```text
+Phone Call → Speech → Speech-to-Text → Translation → Text-to-Speech → Phone Call
+SMS → Language Detection → Translation → SMS
+Voice → Text → Translation → SMS
+```
+
+The telecom capability itself is the product. End users only need a normal phone.
+
+---
+
+## Hackathon alignment (Africa's Talking tracks)
+
+Bridge is built for the Africa's Talking hackathon brief — it combines **five
+AT APIs behind one workflow canvas** ("Smart communication platforms" track)
+while serving each individual track:
+
+| Track | How Bridge addresses it |
+| --- | --- |
+| Customer service & support | Voice/SMS workflows route callers through STT → translation → TTS loops or auto-replies, so support works on a feature phone with no internet. |
+| USSD-based telecom services | `ussd_request` trigger + `USSD Menu` / `USSD End Screen` nodes implement the AT `CON`/`END` protocol with **multi-level, star-accumulated sessions** (`1*2`). Runs pause (`waiting`) and resume per request. |
+| Service & network notifications | Any workflow can fan out `Send SMS` alerts (outage notices, account activity) conditionally via `Condition`/`Switch`. |
+| Airtime & customer incentives | `Send Airtime` node calls the AT Airtime API — loyalty rewards, referral bonuses, promo campaigns (see the seeded *SMS Airtime Reward* demo). |
+| Mobile connectivity solutions | Roadmap: a `Send Data` node using the Mobile Data API alongside airtime incentives. |
+| Smart communication platforms | The node graph itself: Voice + SMS + USSD + Airtime + AI in one engine, one conversation history, one observability trail. |
+
+Demo script (no telecom credentials needed — stub providers simulate the
+operator): activate a workflow, then `curl` the webhooks as shown in
+"Running locally" — USSD returns real `CON`/`END` bodies and SMS runs the
+full translate-and-reply loop.
+
+## Stack
+
+| Layer      | Technology                                                       |
+| ---------- | ---------------------------------------------------------------- |
+| Backend    | FastAPI (modular monolith), SQLAlchemy 2 async, Pydantic v2      |
+| Frontend   | Nuxt 4 + Vue 3, Vue Flow (visual builder), Pinia, Tailwind CSS 4 |
+| Database   | SQLite (local dev) / PostgreSQL (production via `DATABASE_URL`)  |
+| Telecom    | Africa's Talking (Voice, SMS, Webhooks) — provider-adapter based |
+| AI         | STT / Translation / TTS / Language detection behind service interfaces (stub provider built in) |
+| Deployment | Render (`render.yaml` included)                                  |
+
+## Project structure (spec section 57)
+
+```text
+backend/
+  app/
+    core/        config · database · security · logging
+    api/routes/  auth · workflows · runs · conversations · communications · webhooks · dashboard · settings
+    modules/
+      workflows/       models · schemas · service · engine · registry · validator · nodes/*
+      communications/  voice · sms · service (Africa's Talking + stub providers)
+      ai/              speech · translation · synthesis · service
+      conversations/   models · service · schemas
+      contacts/        models · service
+    main.py  seed.py
+  tests/
+frontend/
+  app/
+    components/  workflow/ (canvas · palette · inspector · custom nodes) · dashboard/
+    pages/       dashboard · workflows · conversations · runs · settings
+    composables/ stores/ types/ utils/
+render.yaml
+```
+
+## Running locally (sandbox / development)
+
+Both services are already wired into this workspace:
+
+- **Frontend (Nuxt)**: port 3000 — `bun run dev` at the repo root (runs `frontend/`).
+- **Backend (FastAPI)**: port 8000 — started via `mini-services/bridge-backend/` or `bun run dev:backend`.
+
+The Nuxt dev server proxies `/api/*` to FastAPI, so the frontend works with zero configuration.
+The demo is seeded on first start with two active workflows:
+
+- **Voice Translator**: Incoming Call → Collect Speech → Speech to Text → Translate (EN→HA) → Text to Speech → Play Voice
+- **SMS Translator**: Incoming SMS → Translate → Send SMS
+
+### Useful commands
+
+```bash
+# backend tests (8 tests: validator + API)
+cd backend && python -m pytest tests/ -q
+
+# run backend manually
+cd backend && python -m uvicorn app.main:app --port 8000
+
+# frontend dev server
+cd frontend && bun run dev
+```
+
+## API surface (`/api/v1`)
+
+- `GET /health`
+- `GET|POST /workflows`, `GET|PATCH|DELETE /workflows/{id}`
+- `POST /workflows/{id}/versions` — save a new immutable version (spec §31)
+- `POST /workflows/validate`, `POST /workflows/{id}/validate` — pre-deploy validation (spec §23)
+- `POST /workflows/{id}/test-run` — simulate a trigger from the builder Test button (spec §20)
+- `GET /workflows/node-types` — node registry for the palette/inspector
+- `GET /runs`, `GET /runs/{id}` — execution history (spec §29)
+- `GET /conversations`, `GET /conversations/{id}`, `GET /conversations/{id}/timeline` (spec §28)
+- `GET /calls`, `GET /messages`
+- `GET /dashboard/summary`
+- `GET /settings/providers` — non-sensitive provider status
+- `POST /auth/register`, `POST /auth/login`
+- `POST /webhooks/africastalking/voice`, `POST /webhooks/africastalking/sms`, `POST /webhooks/africastalking/ussd` — telecom events → workflow triggers (spec §25), with idempotency (spec §45) and USSD session resume
+
+## Africa's Talking setup
+
+1. Create an account and get credentials (`AT_USERNAME`, `AT_API_KEY`).
+2. Set env vars on the backend (see `backend/.env.example`). Without credentials the
+   platform uses **stub providers** so the full workflow loop stays testable.
+3. Register the webhook URLs in the Africa's Talking dashboard (visible in the
+   frontend **Settings** page):
+   - `https://<api-host>/api/v1/webhooks/africastalking/voice`
+   - `https://<api-host>/api/v1/webhooks/africastalking/sms`
+   - `https://<api-host>/api/v1/webhooks/africastalking/ussd` — callback URL plus service code, e.g. `*384*1234#`
+
+## Deploying to Render
+
+`render.yaml` provisions the FastAPI web service, the Nuxt web service, and a
+PostgreSQL instance. Set the `sync: false` env vars (AT credentials, CORS origin,
+`NUXT_PUBLIC_API_BASE`) in the Render dashboard after the first deploy.
+
+## Design language
+
+Deep Navy `#0B1220` · Signal Blue `#2563EB` · Communication Cyan `#06B6D4` on
+neutral surfaces — reliability, clarity and trust; no purple, no neon, no glassmorphism.
+
+## Roadmap (spec sections 37-38, 43)
+
+Phase 1 foundation (this milestone) → Phase 2 live AT voice loop → Phase 3 engine
+hardening (fallback paths) → Phase 4 real AI providers → Phase 5-8: builder
+polish, conversations, dashboard, production hardening.
+
+Deliberately out of scope for the MVP: CRM/ERP features, payments, multi-provider
+telecom, complex permissions.
