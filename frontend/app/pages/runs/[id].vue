@@ -61,8 +61,8 @@ function formatWhen(value: string) {
       <div class="card p-5 mb-4">
         <div class="flex items-center gap-3 flex-wrap">
           <h1 class="text-lg font-semibold tracking-tight tabular-nums">{{ run.id }}</h1>
-          <span :class="run.status === 'completed' ? 'pill-success' : run.status === 'failed' ? 'pill-error' : 'pill-neutral'">
-            {{ run.status }}
+          <span :class="run.status === 'completed' ? 'pill-success' : run.status === 'failed' ? 'pill-error' : run.status === 'waiting' ? 'pill-warning' : 'pill-neutral'">
+            {{ run.status === 'waiting' ? 'waiting for input' : run.status }}
           </span>
         </div>
         <p class="text-sm text-muted mt-1">

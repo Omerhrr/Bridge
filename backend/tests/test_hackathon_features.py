@@ -178,6 +178,72 @@ def test_sms_airtime_reward_flow(client):
     assert "sms.sent" in event_names
 
 
+def test_ussd_completed_without_end_screen_closes_session(client):
+    """A run finishing without an ussd_end node must reply END, never CON —
+    otherwise Africa's Talking holds the session open until timeout with no
+    waiting run left to answer the next callback."""
+    definition = {
+        "nodes": [
+            {"id": "1", "type": "ussd_request"},
+            {"id": "2", "type": "ussd_menu", "config": {"title": "Ping"}},
+        ],
+        "edges": [{"source": "1", "target": "2"}],
+    }
+    created = client.post("/api/v1/workflows", json={"name": "USSD No End Test", "definition": definition})
+    assert created.status_code == 201, created.text
+    _activate(client, created.json()["id"])
+
+    resp = client.post(USSD_URL, data={
+        "sessionId": "sess-noend", "serviceCode": "*384*1234#",
+        "phoneNumber": "+254700111222", "text": "",
+    })
+    assert resp.text.startswith("CON"), resp.text
+
+    resp = client.post(USSD_URL, data={
+        "sessionId": "sess-noend", "serviceCode": "*384*1234#",
+        "phoneNumber": "+254700111222", "text": "1",
+    })
+    assert resp.status_code == 200
+    assert resp.text.startswith("END"), resp.text
+
+
+def test_send_sms_renders_variables(client):
+    """send_sms config supports {{variable}} templates (parity with the
+    airtime node)."""
+    # Trigger matching is first-active-workflow-wins (MVP behaviour): retire
+    # earlier SMS workflows created by other tests so this one receives the
+    # webhook.
+    for workflow in client.get("/api/v1/workflows").json():
+        if workflow["status"] == "active":
+            has_sms_trigger = any(
+                n["type"] == "incoming_sms"
+                for n in (workflow["current_version"] or {}).get("definition", {}).get("nodes", [])
+            )
+            if has_sms_trigger and workflow["name"] != "SMS Template Test":
+                client.patch(f"/api/v1/workflows/{workflow['id']}", json={"status": "inactive"})
+
+    definition = {
+        "nodes": [
+            {"id": "1", "type": "incoming_sms"},
+            {"id": "2", "type": "send_sms", "config": {"text": "Hello {{sender}}"}},
+        ],
+        "edges": [{"source": "1", "target": "2"}],
+    }
+    created = client.post("/api/v1/workflows", json={"name": "SMS Template Test", "definition": definition})
+    assert created.status_code == 201, created.text
+    _activate(client, created.json()["id"])
+
+    resp = client.post(SMS_URL, data={
+        "from": "+254700777888", "to": "20980", "text": "hi",
+        "id": "at-tpl-1", "date": "2026-09-21",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed", resp.text
+    detail = client.get(f"/api/v1/runs/{resp.json()['run_id']}")
+    sent = [e for e in detail.json()["events"] if e["event"] == "sms.sent"]
+    assert sent and sent[0]["payload"]["text"] == "Hello +254700777888", sent
+
+
 def test_send_airtime_requires_amount(client):
     definition = {
         "nodes": [

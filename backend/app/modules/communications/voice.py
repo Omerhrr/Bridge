@@ -20,6 +20,8 @@ class CallResult:
 class VoiceProvider:
     """Interface: voice call control through a telecom provider."""
 
+    provider: str = "stub"
+
     async def make_call(self, to: str, from_number: str | None = None) -> CallResult:
         raise NotImplementedError
 
@@ -35,6 +37,8 @@ class StubVoiceProvider(VoiceProvider):
 
 class AfricaTalkingVoiceProvider(VoiceProvider):
     """Africa's Talking Voice integration."""
+
+    provider = "africastalking"
 
     async def make_call(self, to: str, from_number: str | None = None) -> CallResult:
         if not settings.at_configured:

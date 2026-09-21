@@ -47,8 +47,8 @@ const variableSummary = computed(() => {
   <div class="card p-4">
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-sm font-semibold">Test Run</h3>
-      <span :class="run.status === 'completed' ? 'pill-success' : run.status === 'failed' ? 'pill-error' : 'pill-neutral'">
-        {{ run.status }}
+      <span :class="run.status === 'completed' ? 'pill-success' : run.status === 'failed' ? 'pill-error' : run.status === 'waiting' ? 'pill-warning' : 'pill-neutral'">
+        {{ run.status === 'waiting' ? 'waiting for input' : run.status }}
       </span>
     </div>
 

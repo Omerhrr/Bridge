@@ -25,6 +25,8 @@ class AirtimeSendResult:
 class AirtimeProvider:
     """Interface: send airtime to a phone number."""
 
+    provider: str = "stub"
+
     async def send_airtime(self, to: str, amount: str, currency_code: str) -> AirtimeSendResult:
         raise NotImplementedError
 
@@ -49,6 +51,8 @@ class AfricaTalkingAirtimeProvider(AirtimeProvider):
         {"username": "...", "recipients": [{"phoneNumber": "...",
          "currencyCode": "KES", "amount": "10"}]}
     """
+
+    provider = "africastalking"
 
     async def send_airtime(self, to: str, amount: str, currency_code: str) -> AirtimeSendResult:
         if not settings.at_configured:

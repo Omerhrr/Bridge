@@ -1,7 +1,7 @@
 """Messaging nodes (spec section 11)."""
 from typing import Any
 
-from app.modules.workflows.nodes.base import BaseNode, NodeExecutionError, NodeResult
+from app.modules.workflows.nodes.base import BaseNode, NodeExecutionError, NodeResult, render_template
 
 
 class SendSmsNode(BaseNode):
@@ -19,8 +19,13 @@ class SendSmsNode(BaseNode):
 
     async def execute(self, config: dict[str, Any], ctx) -> NodeResult:
         comms = ctx.services.get("comms")
-        to = config.get("to") or ctx.variables.get("sender") or ctx.variables.get("caller", "")
-        text = config.get("text") or ctx.variables.get("translation", "")
+        to = (
+            render_template(config.get("to", ""), ctx.variables)
+            or ctx.variables.get("sender")
+            or ctx.variables.get("caller")
+            or ""
+        )
+        text = render_template(config.get("text", ""), ctx.variables) or ctx.variables.get("translation", "")
         if not text:
             raise NodeExecutionError("Send SMS has no message text")
         try:

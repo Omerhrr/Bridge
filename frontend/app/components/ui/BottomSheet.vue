@@ -11,6 +11,7 @@ watch(
   (open) => {
     if (import.meta.client) document.body.style.overflow = open ? 'hidden' : ''
   },
+  { immediate: true }, // handle mounting with open=true (deep-link / restore)
 )
 onUnmounted(() => {
   if (import.meta.client) document.body.style.overflow = ''

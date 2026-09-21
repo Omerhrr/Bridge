@@ -227,6 +227,19 @@ class WorkflowService:
                 return run
         return None
 
+    async def sms_event_seen(self, provider_message_id: str) -> bool:
+        """True when an inbound SMS with this provider id was already stored.
+
+        Used by the webhook to report duplicates accurately after the
+        dispatcher skipped the event (spec section 45).
+        """
+        from app.modules.communications.models import SmsMessage
+
+        existing = await self.session.execute(
+            select(SmsMessage.id).where(SmsMessage.provider_message_id == provider_message_id)
+        )
+        return existing.scalar_one_or_none() is not None
+
     async def test_run(self, workflow: Workflow, trigger_type: str, payload: dict) -> WorkflowRun:
         """Simulated run from the Test button (spec section 20)."""
         if not workflow.current_version:

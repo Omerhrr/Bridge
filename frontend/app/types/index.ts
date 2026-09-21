@@ -13,7 +13,7 @@ export interface NodeConfigField {
 export interface NodeMeta {
   type: string
   label: string
-  category: 'trigger' | 'voice' | 'ai' | 'messaging' | 'logic' | 'flow'
+  category: 'trigger' | 'voice' | 'ai' | 'messaging' | 'telecom' | 'logic' | 'flow'
   description: string
   icon: string
   inputs: string[]
@@ -83,7 +83,7 @@ export interface WorkflowEvent {
 export interface WorkflowRun {
   id: string
   workflow_id: number
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  status: 'pending' | 'running' | 'waiting' | 'completed' | 'failed' | 'cancelled'
   current_node: string | null
   variables: Record<string, unknown>
   error: string | null

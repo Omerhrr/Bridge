@@ -50,9 +50,9 @@ function workflowName(workflowId: number) {
           <p class="text-xs text-muted mt-0.5 tabular-nums">{{ run.id }} · started {{ new Date(run.started_at).toLocaleTimeString() }}</p>
         </div>
         <span
-          :class="run.status === 'completed' ? 'pill-success' : run.status === 'failed' ? 'pill-error' : run.status === 'running' ? 'pill-comms' : 'pill-neutral'"
+          :class="run.status === 'completed' ? 'pill-success' : run.status === 'failed' ? 'pill-error' : run.status === 'running' ? 'pill-comms' : run.status === 'waiting' ? 'pill-warning' : 'pill-neutral'"
         >
-          {{ run.status }}
+          {{ run.status === 'waiting' ? 'waiting for input' : run.status }}
         </span>
       </NuxtLink>
     </div>

@@ -20,6 +20,8 @@ class SmsSendResult:
 class SMSProvider:
     """Interface: send an SMS through a telecom provider."""
 
+    provider: str = "stub"
+
     async def send_sms(self, to: str, text: str, sender_id: str | None = None) -> SmsSendResult:
         raise NotImplementedError
 
@@ -36,6 +38,8 @@ class StubSMSProvider(SMSProvider):
 
 class AfricaTalkingSMSProvider(SMSProvider):
     """Africa's Talking SMS integration (https://developers.africastalking.com)."""
+
+    provider = "africastalking"
 
     async def send_sms(self, to: str, text: str, sender_id: str | None = None) -> SmsSendResult:
         if not settings.at_configured:

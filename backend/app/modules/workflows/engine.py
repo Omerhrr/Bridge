@@ -138,6 +138,10 @@ class WorkflowEngine:
         if start is None:
             run.status = RunStatus.failed
             run.error = "Waiting node no longer exists in the workflow definition"
+            run.finished_at = datetime.now(timezone.utc)
+            await self._record_event(
+                run.id, "workflow.failed", None, None, {"error": run.error}
+            )
             return run
 
         # Fold the new input into the run variables (same fields the trigger

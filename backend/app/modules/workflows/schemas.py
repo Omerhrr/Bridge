@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class NodeDefinition(BaseModel):
@@ -63,6 +63,22 @@ class WorkflowOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _count_versions(cls, data: Any) -> Any:
+        """Populate version_count from the ORM relationship.
+
+        ``Workflow`` has no version_count column; without this the field
+        would always serialize as 0 even though versions are eager-loaded.
+        """
+        versions = getattr(data, "versions", None)
+        if versions is not None:
+            try:
+                data.version_count = len(versions)
+            except TypeError:
+                pass
+        return data
 
 
 class ValidationIssue(BaseModel):

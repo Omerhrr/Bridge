@@ -94,6 +94,20 @@ export const useWorkflowsStore = defineStore('workflows', {
       }
     },
 
+    /** Validate a canvas definition WITHOUT persisting it — validating is a
+     * lint of the current builder state, not a new immutable version. */
+    async validateDefinition(definition: WorkflowDefinition) {
+      const api = useApi()
+      try {
+        this.lastReport = await api<ValidationReport>('/workflows/validate', {
+          method: 'POST',
+          body: definition,
+        })
+      } catch {
+        this.lastReport = null
+      }
+    },
+
     async testRun(id: number, payload: Record<string, unknown> = {}) {
       const api = useApi()
       this.lastRun = null

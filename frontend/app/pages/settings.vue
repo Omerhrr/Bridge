@@ -19,11 +19,12 @@ const modeOptions = [
 ]
 
 const webhookUrls = computed(() => {
-  if (!import.meta.client) return { voice: '', sms: '' }
+  if (!import.meta.client) return { voice: '', sms: '', ussd: '' }
   const origin = window.location.origin
   return {
     voice: `${origin}/api/v1/webhooks/africastalking/voice`,
     sms: `${origin}/api/v1/webhooks/africastalking/sms`,
+    ussd: `${origin}/api/v1/webhooks/africastalking/ussd`,
   }
 })
 
@@ -101,7 +102,7 @@ async function copy(value: string, key: string) {
             </span>
             <div>
               <h2 class="text-sm font-semibold">Africa's Talking</h2>
-              <p class="text-xs text-muted">Voice · SMS · Webhooks</p>
+              <p class="text-xs text-muted">Voice · SMS · USSD · Airtime · Webhooks</p>
             </div>
             <span :class="status.telecom.configured ? 'pill-success' : 'pill-warning'" class="ml-auto">
               {{ status.telecom.configured ? 'Connected' : 'Simulated' }}

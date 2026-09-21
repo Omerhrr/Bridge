@@ -88,6 +88,14 @@ function deleteSelectedNode() {
 }
 
 function onConnect(connection: Connection) {
+  // Ignore duplicate connections between the same ports.
+  const exists = edges.value.some(
+    (e) =>
+      e.source === connection.source &&
+      e.target === connection.target &&
+      (e.sourceHandle ?? null) === (connection.sourceHandle ?? null),
+  )
+  if (exists) return
   edges.value.push({
     id: `e-${connection.source}-${connection.target}-${connection.sourceHandle ?? Date.now()}`,
     source: connection.source,
@@ -147,8 +155,9 @@ async function save() {
 }
 
 async function validate() {
-  await store.saveVersion(workflowId.value, toDefinition(), 'validate snapshot')
-  await store.validate(workflowId.value)
+  // Lint the canvas as-is — no version is created, so repeated Validate
+  // clicks do not pollute the immutable version history.
+  await store.validateDefinition(toDefinition())
   showPanel.value = 'validation'
   if (dm.isMobile.value) sheet.value = 'panel'
 }

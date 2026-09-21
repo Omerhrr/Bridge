@@ -42,16 +42,25 @@ class StubSpeechRecognition(SpeechRecognitionService):
 
 
 class HttpSpeechRecognition(SpeechRecognitionService):
-    """Provider skeleton for an OpenAI-compatible transcription API."""
+    """Provider skeleton for an OpenAI-compatible transcription API.
+
+    Transcription APIs accept audio bytes, not URLs, so the audio is
+    downloaded from the recording URL first and uploaded as multipart data.
+    """
 
     async def transcribe(self, audio_url: str, language: str = "auto") -> SpeechResult:
         if not settings.ai_api_key:
             raise RuntimeError("AI_API_KEY is not configured")
-        async with httpx.AsyncClient(timeout=30) as client:
+        if not audio_url:
+            raise RuntimeError("No recording URL supplied to the transcription step")
+        async with httpx.AsyncClient(timeout=60) as client:
+            audio = await client.get(audio_url)
+            audio.raise_for_status()
+            suffix = audio_url.rsplit(".", 1)[-1][:4] or "mp3"
             resp = await client.post(
                 f"{settings.ai_base_url or 'https://api.openai.com/v1'}/audio/transcriptions",
                 headers={"Authorization": f"Bearer {settings.ai_api_key}"},
-                files={"audio": audio_url},
+                files={"audio": (f"recording.{suffix}", audio.content, "application/octet-stream")},
                 data={"model": settings.ai_stt_model or "whisper-1"},
             )
             resp.raise_for_status()

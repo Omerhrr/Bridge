@@ -84,7 +84,17 @@ const isConfigured = computed(() => {
 
 const handleOrder = ['true', 'false', 'default']
 const outputs = computed(() => {
-  const outs = meta.value?.outputs ?? ['out']
+  let outs = meta.value?.outputs ?? ['out']
+  // Switch nodes expose one handle per configured case plus "default" —
+  // the cases live in the node config, not the static metadata, so the
+  // handles can only be derived here (required to wire USSD menus).
+  if (props.data.type === 'switch') {
+    const cases = String(props.data.config?.cases ?? '')
+      .split(',')
+      .map((c) => c.trim())
+      .filter((c) => c && c !== 'default')
+    outs = [...cases, 'default']
+  }
   return [...outs].sort((a, b) => {
     const ia = handleOrder.indexOf(a), ib = handleOrder.indexOf(b)
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)

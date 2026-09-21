@@ -53,8 +53,13 @@ async def africastalking_sms(
         b_number=to,
         idempotency_key=id or None,
     )
-    status = run.status.value if run else "no_matching_workflow"
-    return {"status": status, "run_id": run.id if run else None}
+    if run is None:
+        # Distinguish "we already processed this delivery" (idempotency,
+        # spec section 45) from "nothing matched" for observability.
+        duplicate = bool(id) and await service.sms_event_seen(id)
+        status = "duplicate_ignored" if duplicate else "no_matching_workflow"
+        return {"status": status, "run_id": None}
+    return {"status": run.status.value, "run_id": run.id}
 
 
 @router.post("/africastalking/voice")
@@ -179,7 +184,10 @@ async def africastalking_ussd(
         # A menu screen was displayed; keep the session open.
         prefix = "CON"
     elif status_value == "completed":
-        prefix = "END" if str(run.variables.get("ussd_close", "")) == "1" else "CON"
+        # A run that finished without an explicit ussd_end node has nothing
+        # waiting to consume the next callback — always close the session so
+        # Africa's Talking does not hold it open until timeout.
+        prefix = "END"
     else:
         # Failed or otherwise unfinished runs always close the session.
         screen = "An error occurred while processing your request."
