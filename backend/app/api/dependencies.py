@@ -58,9 +58,9 @@ CurrentUser = Annotated[User | None, Depends(require_user)]
 
 def get_engine_factory(db: DbSession):
     """Build a workflow engine bound to the request session."""
-    def factory() -> "tuple[AsyncSession, WorkflowEngine]":
+    async def factory() -> "tuple[AsyncSession, WorkflowEngine]":
         ai = get_ai_service()
-        comms = get_communication_service()
+        comms = await get_communication_service(db)
         from app.modules.workflows.engine import WorkflowEngine
 
         return db, WorkflowEngine(db, ai, comms)

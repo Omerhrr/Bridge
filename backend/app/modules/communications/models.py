@@ -44,3 +44,21 @@ class SmsMessage(Base):
     status: Mapped[str] = mapped_column(String(24), default="received")
     meta: Mapped[dict | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class WhatsAppSettings(Base):
+    """Single-row table: the business's own WhatsApp Business (Meta Cloud
+    API) credentials, entered on the Settings page instead of set as backend
+    environment variables. Lets each deployment be reconfigured by its owner
+    without redeploying."""
+
+    __tablename__ = "whatsapp_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    phone_number_id: Mapped[str] = mapped_column(String(64), default="")
+    # Encrypted (app.core.crypto); never returned by the API once saved.
+    access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Chosen by the business, entered again in the Meta App dashboard's
+    # webhook setup so Meta's verification handshake can be checked.
+    verify_token: Mapped[str] = mapped_column(String(128), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

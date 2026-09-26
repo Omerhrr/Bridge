@@ -100,6 +100,19 @@ class Settings(BaseSettings):
     ai_translation_model: str = ""
     ai_tts_model: str = ""
 
+    # WhatsApp (Meta Cloud API): a second, independent inbound/outbound
+    # channel alongside Africa's Talking SMS/voice/USSD. A business connects
+    # its own WhatsApp Business number through Meta's developer console and
+    # points its webhook at Bridge; Bridge never talks to Africa's Talking
+    # for WhatsApp traffic.
+    wa_phone_number_id: str = ""
+    wa_access_token: str = ""
+    # Arbitrary shared secret Bridge itself picks; entered in the Meta App
+    # dashboard's webhook setup so Meta's verification handshake (a GET
+    # request) can be checked against something only the two sides know.
+    wa_verify_token: str = ""
+    wa_api_version: str = "v21.0"
+
     # Knowledge sources may only point at public hosts unless this is set
     # (e.g. a database on the same private network as Bridge).
     allow_private_sources: bool = False
@@ -154,6 +167,10 @@ class Settings(BaseSettings):
     @property
     def default_sms_sender(self) -> str | None:
         return clean_sender_id(self.at_sender_id) or clean_sender_id(self.at_shortcode) or None
+
+    @property
+    def wa_configured(self) -> bool:
+        return bool(self.wa_phone_number_id and self.wa_access_token)
 
 
 @lru_cache

@@ -26,15 +26,18 @@ from app.modules.workflows.nodes.translate import TranslateNode
 from app.modules.workflows.nodes.trigger import (
     IncomingCallNode,
     IncomingSmsNode,
+    IncomingWhatsappNode,
     UssdRequestNode,
 )
 from app.modules.workflows.nodes.ussd import UssdEndNode, UssdMenuNode
+from app.modules.workflows.nodes.whatsapp import SendWhatsappNode
 
 NODE_REGISTRY: dict[str, type[BaseNode]] = {
     node.type: node
     for node in (
         IncomingCallNode,
         IncomingSmsNode,
+        IncomingWhatsappNode,
         UssdRequestNode,
         MakeCallNode,
         CollectSpeechNode,
@@ -43,6 +46,7 @@ NODE_REGISTRY: dict[str, type[BaseNode]] = {
         PlayVoiceNode,
         HangUpNode,
         SendSmsNode,
+        SendWhatsappNode,
         BridgeRelayNode,
         KnowledgeAnswerNode,
         SpeechToTextNode,

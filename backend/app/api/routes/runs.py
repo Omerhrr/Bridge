@@ -15,7 +15,7 @@ async def get_service(db: DbSession) -> WorkflowService:
     from app.modules.ai.service import get_ai_service
     from app.modules.communications.service import get_communication_service
 
-    return WorkflowService(db, WorkflowEngine(db, get_ai_service(), get_communication_service()))
+    return WorkflowService(db, WorkflowEngine(db, get_ai_service(), await get_communication_service(db)))
 
 
 ServiceDep = Annotated[WorkflowService, Depends(get_service)]

@@ -10,7 +10,7 @@ are form-encoded for Africa's Talking.
 from typing import Annotated, Any
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,7 @@ logger = get_logger("bridge.webhooks")
 
 
 async def _get_service(db: AsyncSession) -> WorkflowService:
-    engine = WorkflowEngine(db, get_ai_service(), get_communication_service())
+    engine = WorkflowEngine(db, get_ai_service(), await get_communication_service(db))
     return WorkflowService(db, engine)
 
 
@@ -184,6 +184,93 @@ def _voice_xml(say: str | None = None, play: str | None = None) -> Response:
         action = f"<Say>{xml_escape(say or '')}</Say>"
     body = f'<?xml version="1.0" encoding="UTF-8"?><Response>{action}</Response>'
     return Response(content=body, media_type="application/xml")
+
+
+@router.get("/whatsapp")
+async def whatsapp_verify(db: Annotated[AsyncSession, Depends(get_db)], request: Request) -> Response:
+    """Meta's webhook verification handshake: when a webhook URL is entered
+    in the Meta App dashboard, Meta sends this GET once and expects the
+    `hub.challenge` value echoed back verbatim if the verify token matches
+    the one saved on the Settings page."""
+    from app.modules.communications.whatsapp_config import get_whatsapp_credentials
+
+    _phone_number_id, _access_token, verify_token = await get_whatsapp_credentials(db)
+    params = request.query_params
+    if (
+        params.get("hub.mode") == "subscribe"
+        and verify_token
+        and params.get("hub.verify_token") == verify_token
+    ):
+        return Response(content=params.get("hub.challenge", ""), media_type="text/plain")
+    raise HTTPException(status.HTTP_403_FORBIDDEN, "Verification failed")
+
+
+@router.post("/whatsapp")
+async def whatsapp_incoming(db: Annotated[AsyncSession, Depends(get_db)], request: Request,
+                            background: BackgroundTasks) -> dict:
+    """Incoming WhatsApp message (Meta Cloud API webhook).
+
+    Meta also posts status callbacks (sent/delivered/read) and non-text
+    message types on this same URL; those are acknowledged and ignored, only
+    an actual inbound text message triggers a workflow.
+    """
+    body: dict = await request.json()
+    correlation = new_correlation_id()
+
+    for entry in body.get("entry", []):
+        for change in entry.get("changes", []):
+            value = change.get("value", {}) or {}
+            phone_number_id = (value.get("metadata") or {}).get("phone_number_id", "")
+            for message in value.get("messages", []) or []:
+                if message.get("type") != "text":
+                    continue  # images/audio/interactive replies: out of scope for the hackathon MVP
+                from_ = message.get("from", "")
+                text = (message.get("text") or {}).get("body", "")
+                message_id = message.get("id", "")
+                log_event(logger, "whatsapp.received", correlation_id=correlation, sender=from_,
+                          to=phone_number_id, provider="whatsapp")
+
+                service = await _get_service(db)
+                if message_id and await service.sms_event_seen(message_id):
+                    log_event(logger, "webhook.duplicate_ignored", provider_message_id=message_id)
+                    continue
+
+                from app.modules.messaging.service import MessagingService
+
+                inbound = await MessagingService(db, None, None).log_inbound(
+                    from_, phone_number_id, text, provider_message_id=message_id or None,
+                )
+                payload = {"from": from_, "called": phone_number_id, "text": text, "event_id": message_id}
+                await db.commit()
+                background.add_task(_process_whatsapp_in_background, payload, inbound.id)
+
+    return {"status": "accepted"}
+
+
+async def _process_whatsapp_in_background(payload: dict, inbound_id: int) -> None:
+    from app.core.database import async_session_factory
+    from app.modules.messaging.models import MessageLog
+
+    async with async_session_factory() as session:
+        try:
+            service = await _get_service(session)
+            run = await service.dispatch_telecom_event(
+                trigger_type="incoming_whatsapp",
+                payload=payload,
+                channel="whatsapp",
+                a_number=payload["from"],
+                b_number=payload["called"],
+                idempotency_key=payload["event_id"] or None,
+            )
+            inbound = await session.get(MessageLog, inbound_id)
+            if inbound is not None and run is not None:
+                inbound.run_id = run.id
+            await session.commit()
+            log_event(logger, "whatsapp.processed", run_id=run.id if run else None,
+                      status=run.status.value if run else "no_matching_workflow")
+        except Exception:
+            await session.rollback()
+            logger.exception("whatsapp.processing_failed")
 
 
 @router.post("/africastalking/ussd")

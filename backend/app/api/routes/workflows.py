@@ -28,7 +28,7 @@ router = APIRouter(prefix="/workflows", tags=["workflows"])
 
 
 async def get_service(db: DbSession) -> WorkflowService:
-    engine = WorkflowEngine(db, get_ai_service(), get_communication_service())
+    engine = WorkflowEngine(db, get_ai_service(), await get_communication_service(db))
     return WorkflowService(db, engine)
 
 

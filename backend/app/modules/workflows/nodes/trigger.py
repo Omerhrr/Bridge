@@ -65,6 +65,29 @@ class IncomingSmsNode(BaseNode):
         return NodeResult(outputs={"text": ctx.variables["text"]})
 
 
+class IncomingWhatsappNode(BaseNode):
+    type = "incoming_whatsapp"
+    label = "Incoming WhatsApp"
+    category = "trigger"
+    description = "Receives a WhatsApp message (Meta Cloud API)"
+    icon = "message-circle"
+    inputs = []
+    outputs = ["out"]
+    config_schema = [
+        {"name": "phone_number_id", "label": "WhatsApp Phone Number ID", "type": "text", "required": False,
+         "hint": "Leave empty to match any connected WhatsApp number"},
+    ]
+
+    async def execute(self, config: dict[str, Any], ctx) -> NodeResult:
+        payload = ctx.trigger_payload
+        ctx.variables["sender"] = payload.get("from") or "unknown"
+        ctx.variables["text"] = payload.get("text", "")
+        ctx.variables["wa_phone_number_id"] = payload.get("called") or config.get("phone_number_id", "")
+        ctx.variables["channel"] = "whatsapp"
+        await ctx.record("whatsapp.received", self, sender=ctx.variables["sender"])
+        return NodeResult(outputs={"text": ctx.variables["text"]})
+
+
 class UssdRequestNode(BaseNode):
     type = "ussd_request"
     label = "USSD Request"

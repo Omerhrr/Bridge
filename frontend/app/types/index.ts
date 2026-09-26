@@ -159,12 +159,24 @@ export interface ProviderStatus {
     sender_id: string | null
     shortcode?: string | null
   }
+  whatsapp: {
+    provider: string
+    configured: boolean
+    phone_number_id: string | null
+  }
   ai: {
     provider: string
     configured: boolean
     model?: string | null
   }
   environment: string
+}
+
+export interface WhatsAppConfig {
+  phone_number_id: string
+  verify_token: string
+  has_access_token: boolean
+  configured: boolean
 }
 
 // ---- Messaging -----------------------------------------------------------

@@ -215,7 +215,7 @@ class WorkflowService:
 
         # Record the incoming message inside the conversation timeline.
         text = payload.get("text", "")
-        if channel == "sms" and text:
+        if channel in ("sms", "whatsapp") and text:
             await self.engine.record_incoming_message(
                 conversation, role="caller", channel=channel, content=text
             )
