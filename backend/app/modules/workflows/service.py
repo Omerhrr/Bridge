@@ -234,11 +234,20 @@ class WorkflowService:
         dispatcher skipped the event (spec section 45).
         """
         from app.modules.communications.models import SmsMessage
+        from app.modules.messaging.models import MessageLog
 
         existing = await self.session.execute(
-            select(SmsMessage.id).where(SmsMessage.provider_message_id == provider_message_id)
+            select(SmsMessage.id).where(SmsMessage.provider_message_id == provider_message_id).limit(1)
         )
-        return existing.scalar_one_or_none() is not None
+        if existing.scalar_one_or_none() is not None:
+            return True
+        logged = await self.session.execute(
+            select(MessageLog.id).where(
+                MessageLog.direction == "inbound",
+                MessageLog.provider_message_id == provider_message_id,
+            ).limit(1)
+        )
+        return logged.scalar_one_or_none() is not None
 
     async def test_run(self, workflow: Workflow, trigger_type: str, payload: dict) -> WorkflowRun:
         """Simulated run from the Test button (spec section 20)."""

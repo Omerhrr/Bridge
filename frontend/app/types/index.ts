@@ -157,10 +157,71 @@ export interface ProviderStatus {
     sandbox: boolean
     phone_number: string | null
     sender_id: string | null
+    shortcode?: string | null
   }
   ai: {
     provider: string
     configured: boolean
+    model?: string | null
   }
   environment: string
+}
+
+// ---- Messaging -----------------------------------------------------------
+
+export interface LanguageOption {
+  code: string
+  name: string
+}
+
+export interface Contact {
+  id: number
+  phone_number: string
+  name: string
+  language: string | null
+  language_name: string | null
+  language_locked: boolean
+  partner_number: string | null
+  message_count: number
+  created_at: string
+}
+
+export interface MessageLogEntry {
+  id: number
+  direction: 'inbound' | 'outbound'
+  kind: 'inbound' | 'relay' | 'broadcast' | 'reply' | 'system' | 'workflow'
+  from_number: string | null
+  to_number: string | null
+  original_text: string | null
+  text: string
+  source_language: string | null
+  target_language: string | null
+  status: string
+  error: string | null
+  run_id: string | null
+  created_at: string
+}
+
+export interface DeliveryResult {
+  to: string
+  status: string
+  text: string
+  original_text: string
+  target_language: string | null
+  source_language: string | null
+  message_id: string | null
+  error: string | null
+}
+
+export interface SendResponse {
+  sent: number
+  failed: number
+  results: DeliveryResult[]
+}
+
+export interface MessagingInfo {
+  default_sender: string | null
+  ai_provider: string
+  ai_configured: boolean
+  sandbox: boolean
 }

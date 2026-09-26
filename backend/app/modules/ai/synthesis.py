@@ -39,7 +39,7 @@ class HttpSpeechSynthesis(SpeechSynthesisService):
             raise RuntimeError("AI_API_KEY is not configured")
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
-                f"{settings.ai_base_url or 'https://api.openai.com/v1'}/audio/speech",
+                f"{settings.ai_base_url_resolved}/audio/speech",
                 headers={"Authorization": f"Bearer {settings.ai_api_key}"},
                 json={
                     "model": settings.ai_tts_model or "tts-1",
@@ -54,6 +54,8 @@ class HttpSpeechSynthesis(SpeechSynthesisService):
 
 
 def get_synthesis_service() -> SpeechSynthesisService:
-    if settings.ai_configured:
+    # DeepSeek has no audio endpoints; speech needs an OpenAI-compatible host
+    # with /audio support. Voice prompts are spoken by Africa's Talking <Say>.
+    if settings.ai_configured and settings.ai_provider_resolved in ("openai", "custom"):
         return HttpSpeechSynthesis()
     return StubSpeechSynthesis()

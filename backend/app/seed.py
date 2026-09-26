@@ -56,9 +56,9 @@ USSD_INFO_SERVICE = WorkflowDefinition(
         {"id": "4", "type": "ussd_end", "position": {"x": 720, "y": 40},
          "config": {"message": "Your Bridge balance is KES 240.50. Asante!"}},
         {"id": "5", "type": "ussd_menu", "position": {"x": 720, "y": 200},
-         "config": {"title": "Translation Help", "options": "1. English to Hausa\n2. Hausa to English"}},
+         "config": {"title": "Translation Help", "options": "1. How to chat in any language"}},
         {"id": "6", "type": "ussd_end", "position": {"x": 960, "y": 200},
-         "config": {"message": "A Bridge translator will call you back shortly."}},
+         "config": {"message": "SMS: TO +2547XXXXXXXX Hello to Bridge. They read it in their language, you read replies in yours."}},
         {"id": "7", "type": "ussd_end", "position": {"x": 720, "y": 360},
          "config": {"message": "Invalid choice. Please dial again."}},
     ],
@@ -70,6 +70,17 @@ USSD_INFO_SERVICE = WorkflowDefinition(
         {"source": "5", "target": "6"},
         {"source": "3", "target": "7", "source_handle": "default"},
     ],
+)
+
+BRIDGE_MESSENGER = WorkflowDefinition(
+    # The everyday Bridge: two people chat by SMS in different languages
+    # through the shortcode. Commands: TO <number> <msg>, LANG <language>,
+    # STOP, HELP. Every message is translated into the reader's language.
+    nodes=[
+        {"id": "1", "type": "incoming_sms", "position": {"x": 0, "y": 200}, "config": {}},
+        {"id": "2", "type": "bridge_relay", "position": {"x": 260, "y": 200}, "config": {}},
+    ],
+    edges=[{"source": "1", "target": "2"}],
 )
 
 SMS_AIRTIME_REWARD = WorkflowDefinition(
@@ -117,8 +128,8 @@ async def seed_demo_data() -> None:
             )
 
         for name, description, definition, status in (
-            ("Voice Translator", "Translate live speech between English and Hausa during a call.", VOICE_TRANSLATOR, WorkflowStatus.active),
-            ("SMS Translator", "Translate incoming SMS and reply in the target language.", SMS_TRANSLATOR, WorkflowStatus.active),
+            ("Voice Translator", "Translate a caller's speech into another language during a call.", VOICE_TRANSLATOR, WorkflowStatus.active),
+            ("SMS Translator", "Translate incoming SMS and reply in the target language.", SMS_TRANSLATOR, WorkflowStatus.inactive),
             ("USSD Info Service", "Multi-level USSD menu: balance, translation help and invalid-input handling.", USSD_INFO_SERVICE, WorkflowStatus.active),
             ("SMS Airtime Reward", "Reward customers with airtime when they text REWARD (Airtime API demo).", SMS_AIRTIME_REWARD, WorkflowStatus.inactive),
         ):
@@ -135,3 +146,48 @@ async def seed_demo_data() -> None:
 
         await session.commit()
         log_event(logger, "seed.completed", workflows=4)
+
+
+BRIDGE_MESSENGER_NAME = "Bridge Messenger"
+
+
+async def ensure_bridge_messenger() -> None:
+    """Install the Bridge Messenger workflow on databases seeded before it
+    existed (e.g. the running Render deployment), and make it the active
+    SMS workflow. Runs once: if the workflow exists it is left untouched."""
+    if not settings.seed_demo_data:
+        return
+    from app.core.database import async_session_factory
+    from sqlalchemy.orm import selectinload
+
+    async with async_session_factory() as session:
+        existing = await session.execute(select(Workflow.id).where(Workflow.name == BRIDGE_MESSENGER_NAME))
+        if existing.scalar_one_or_none() is not None:
+            return
+
+        # Only one active workflow should own the SMS trigger.
+        active = await session.execute(
+            select(Workflow).where(Workflow.status == WorkflowStatus.active)
+            .options(selectinload(Workflow.current_version))
+        )
+        for workflow in active.scalars():
+            nodes = (workflow.current_version.definition if workflow.current_version else {}).get("nodes", [])
+            if any(node.get("type") == "incoming_sms" for node in nodes):
+                workflow.status = WorkflowStatus.inactive
+
+        workflow = Workflow(
+            name=BRIDGE_MESSENGER_NAME,
+            description="Chat by SMS across languages: TO <number> <message>, LANG <language>, STOP, HELP.",
+            status=WorkflowStatus.active,
+        )
+        session.add(workflow)
+        await session.flush()
+        version = WorkflowVersion(
+            workflow_id=workflow.id, version_number=1,
+            definition=BRIDGE_MESSENGER.model_dump(), comment="installed",
+        )
+        session.add(version)
+        await session.flush()
+        workflow.current_version_id = version.id
+        await session.commit()
+        log_event(logger, "seed.bridge_messenger_installed")

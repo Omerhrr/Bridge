@@ -5,6 +5,13 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# provider -> (base URL, default chat model)
+_AI_PRESETS: dict[str, tuple[str, str]] = {
+    "deepseek": ("https://api.deepseek.com", "deepseek-chat"),
+    "openai": ("https://api.openai.com/v1", "gpt-4o-mini"),
+}
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
@@ -48,10 +55,18 @@ class Settings(BaseSettings):
     at_api_key: str = ""
     at_phone_number: str = ""
     at_sender_id: str = ""
+    # Shortcode people text (e.g. the sandbox "57000"). Used as the default
+    # sender for outbound SMS so replies land in the same thread on the phone.
+    at_shortcode: str = ""
     at_sandbox: bool = True
+    # Acknowledge SMS webhooks immediately and run the workflow in the
+    # background, so slow AI calls never make Africa's Talking retry.
+    sms_background_processing: bool = True
 
-    # AI provider (spec section 26)
-    ai_provider: str = "stub"
+    # AI provider (spec section 26): "deepseek", "openai", "custom" (any
+    # OpenAI-compatible host via AI_BASE_URL), "stub" (offline phrasebook) or
+    # "auto" (deepseek when a key is present, otherwise stub).
+    ai_provider: str = "auto"
     ai_api_key: str = ""
     ai_base_url: str = ""
     ai_stt_model: str = ""
@@ -77,8 +92,31 @@ class Settings(BaseSettings):
         return bool(self.at_username and self.at_api_key)
 
     @property
+    def ai_provider_resolved(self) -> str:
+        provider = (self.ai_provider or "auto").strip().lower()
+        if provider == "auto":
+            return "deepseek" if self.ai_api_key else "stub"
+        return provider
+
+    @property
     def ai_configured(self) -> bool:
-        return self.ai_provider != "stub" and bool(self.ai_api_key)
+        return self.ai_provider_resolved != "stub" and bool(self.ai_api_key)
+
+    @property
+    def ai_base_url_resolved(self) -> str:
+        if self.ai_base_url:
+            return self.ai_base_url.rstrip("/")
+        return _AI_PRESETS.get(self.ai_provider_resolved, _AI_PRESETS["openai"])[0]
+
+    @property
+    def ai_chat_model(self) -> str:
+        if self.ai_translation_model:
+            return self.ai_translation_model
+        return _AI_PRESETS.get(self.ai_provider_resolved, _AI_PRESETS["openai"])[1]
+
+    @property
+    def default_sms_sender(self) -> str | None:
+        return self.at_sender_id or self.at_shortcode or None
 
 
 @lru_cache

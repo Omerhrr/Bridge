@@ -5,6 +5,7 @@ unsupported connections, cycles, missing credentials and unsupported
 languages before a workflow can be deployed.
 """
 from app.core.config import settings
+from app.modules.ai.languages import is_supported
 from app.modules.workflows.registry import NODE_REGISTRY, TRIGGER_TYPES
 from app.modules.workflows.schemas import (
     ValidationIssue,
@@ -153,11 +154,10 @@ def validate_workflow(definition: WorkflowDefinition) -> ValidationReport:
         passed += 1
 
     # 8. Unsupported languages on translate / TTS nodes.
-    supported = set(settings.supported_language_list)
     languages_ok = True
     for node in definition.nodes:
         target = (node.config or {}).get("target_language")
-        if node.type == "translate" and target and target not in supported:
+        if node.type == "translate" and target and not is_supported(target):
             languages_ok = False
             issues.append(
                 ValidationIssue(level="error", node_id=node.id, message=f"Unsupported language '{target}'")

@@ -1,9 +1,9 @@
 """Translation service interface and stub provider (spec section 26)."""
 from dataclasses import dataclass
 
-import httpx
-
 from app.core.config import settings
+from app.modules.ai.languages import language_name, normalize_language
+from app.modules.ai.llm import LLMError, chat_json
 from app.core.logging import get_logger, log_event
 
 logger = get_logger("bridge.ai.translation")
@@ -53,12 +53,17 @@ class TranslationService:
     async def translate(self, text: str, source: str = "auto", target: str = "en") -> TranslationResult:
         raise NotImplementedError
 
+    async def detect(self, text: str) -> str:
+        raise NotImplementedError
+
 
 class StubTranslationService(TranslationService):
     """Development provider: phrasebook lookup with marker fallback."""
 
     async def translate(self, text: str, source: str = "auto", target: str = "en") -> TranslationResult:
         detected = source if source not in ("", "auto") else self._detect(text)
+        if detected == target:
+            return TranslationResult(text=text, source=detected, target=target, provider="stub")
         table = _PHRASEBOOK.get((detected, target), {})
         lowered = text.strip().lower()
         translated = table.get(lowered)
@@ -66,6 +71,9 @@ class StubTranslationService(TranslationService):
             translated = f"[{detected}→{target}] {text}"
         log_event(logger, "translation.completed", provider="stub", source=detected, target=target)
         return TranslationResult(text=translated, source=detected, target=target, provider="stub")
+
+    async def detect(self, text: str) -> str:
+        return self._detect(text)
 
     @staticmethod
     def _detect(text: str) -> str:
@@ -77,35 +85,56 @@ class StubTranslationService(TranslationService):
         return "en"
 
 
-class HttpTranslationService(TranslationService):
-    """Provider skeleton for an OpenAI-compatible chat translation API."""
+class LLMTranslationService(TranslationService):
+    """Translation through an OpenAI-compatible chat model (DeepSeek by default).
+
+    One call both detects the source language and translates, so callers get
+    the sender's language for free (used to learn contact preferences).
+    """
+
+    SYSTEM = (
+        "You are Bridge, a professional translator for SMS and USSD messages "
+        "between people across Africa and the world. Translate faithfully and "
+        "naturally, keep names, numbers, amounts, dates and phone numbers "
+        "exactly as written, keep it concise (SMS), and never add commentary. "
+        "Respond only with a json object: {\"detected_language\": <ISO 639-1 code of "
+        "the input, or ISO 639-3 if no 2-letter code exists, e.g. 'pcm' for "
+        "Nigerian Pidgin>, \"translation\": <the translated text>}."
+    )
 
     async def translate(self, text: str, source: str = "auto", target: str = "en") -> TranslationResult:
-        if not settings.ai_api_key:
-            raise RuntimeError("AI_API_KEY is not configured")
-        language_names = {"en": "English", "ha": "Hausa", "sw": "Swahili", "yo": "Yoruba",
-                          "ig": "Igbo", "fr": "French", "ar": "Arabic"}
-        target_name = language_names.get(target, target)
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{settings.ai_base_url or 'https://api.openai.com/v1'}/chat/completions",
-                headers={"Authorization": f"Bearer {settings.ai_api_key}"},
-                json={
-                    "model": settings.ai_translation_model or "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": f"Translate the user text to {target_name}. Reply with the translation only."},
-                        {"role": "user", "content": text},
-                    ],
-                    "temperature": 0,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        translated = data["choices"][0]["message"]["content"].strip()
-        return TranslationResult(text=translated, source=source, target=target, provider="openai")
+        target_code = normalize_language(target) or target
+        source_hint = (
+            f"The input is written in {language_name(source)}. "
+            if source not in ("", "auto", None) else ""
+        )
+        data = await chat_json(
+            self.SYSTEM,
+            f"{source_hint}Translate into {language_name(target_code)} ({target_code}).\n\n"
+            f"Text:\n{text}",
+        )
+        translated = str(data.get("translation") or "").strip()
+        if not translated:
+            raise LLMError("AI provider returned an empty translation")
+        detected = normalize_language(str(data.get("detected_language") or "")) or (
+            source if source not in ("", "auto", None) else "und"
+        )
+        log_event(logger, "translation.completed", provider=settings.ai_provider_resolved,
+                  source=detected, target=target_code)
+        return TranslationResult(text=translated, source=detected, target=target_code,
+                                 provider=settings.ai_provider_resolved)
+
+    async def detect(self, text: str) -> str:
+        data = await chat_json(
+            "Identify the language of the user's text. Respond only with a json object "
+            "{\"language\": <ISO 639-1 code, or ISO 639-3 if no 2-letter code exists>}.",
+            text,
+            max_tokens=20,
+        )
+        return normalize_language(str(data.get("language") or "")) or "und"
 
 
 def get_translation_service() -> TranslationService:
     if settings.ai_configured:
-        return HttpTranslationService()
+        return LLMTranslationService()
     return StubTranslationService()

@@ -122,6 +122,10 @@ async function copy(value: string, key: string) {
               <dd class="font-medium tabular-nums">{{ status.telecom.phone_number || 'not set' }}</dd>
             </div>
             <div class="flex justify-between gap-4">
+              <dt class="text-muted">Shortcode</dt>
+              <dd class="font-medium tabular-nums">{{ status.telecom.shortcode || 'not set' }}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
               <dt class="text-muted">Sender ID</dt>
               <dd class="font-medium">{{ status.telecom.sender_id || 'not set' }}</dd>
             </div>
@@ -129,7 +133,7 @@ async function copy(value: string, key: string) {
           <p class="text-xs text-muted mt-3 leading-relaxed">
             Configure with <code class="bg-canvas px-1 rounded">AT_USERNAME</code>,
             <code class="bg-canvas px-1 rounded">AT_API_KEY</code> and
-            <code class="bg-canvas px-1 rounded">AT_PHONE_NUMBER</code> environment variables on the backend.
+            <code class="bg-canvas px-1 rounded">AT_SHORTCODE</code> environment variables on the backend.
           </p>
         </section>
 
@@ -141,7 +145,7 @@ async function copy(value: string, key: string) {
             </span>
             <div>
               <h2 class="text-sm font-semibold">AI Provider</h2>
-              <p class="text-xs text-muted">Speech-to-Text · Translation · Text-to-Speech</p>
+              <p class="text-xs text-muted">Translation · Language detection</p>
             </div>
             <span :class="status.ai.configured ? 'pill-success' : 'pill-warning'" class="ml-auto">
               {{ status.ai.configured ? 'Connected' : 'Stub' }}
@@ -153,13 +157,18 @@ async function copy(value: string, key: string) {
               <dd class="font-medium">{{ status.ai.provider }}</dd>
             </div>
             <div class="flex justify-between gap-4">
+              <dt class="text-muted">Model</dt>
+              <dd class="font-medium">{{ status.ai.model || '—' }}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
               <dt class="text-muted">Environment</dt>
               <dd class="font-medium">{{ status.environment }}</dd>
             </div>
           </dl>
           <p class="text-xs text-muted mt-3 leading-relaxed">
-            With no AI key configured, Bridge uses a built-in stub provider: translations use a small
-            demo phrasebook so workflows run end to end during development.
+            Set <code class="bg-canvas px-1 rounded">AI_API_KEY</code> (DeepSeek by default, or
+            <code class="bg-canvas px-1 rounded">AI_PROVIDER=openai</code>). Without a key Bridge falls back
+            to an offline demo phrasebook.
           </p>
         </section>
 

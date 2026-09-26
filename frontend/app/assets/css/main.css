@@ -65,6 +65,15 @@ body {
   @apply btn text-muted hover:text-ink hover:bg-canvas;
 }
 
+/* Square icon buttons ("btn-ghost h-8 w-8 px-0"): the component classes are
+   unlayered CSS and would otherwise beat the px-0 utility, squeezing the icon. */
+.btn-primary.px-0,
+.btn-secondary.px-0,
+.btn-ghost.px-0 {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .input {
   @apply w-full h-9 rounded-md border border-line bg-surface px-3 text-sm text-ink placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-signal/30 focus:border-signal;
 }

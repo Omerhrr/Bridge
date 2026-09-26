@@ -10,15 +10,17 @@ are form-encoded for Africa's Talking.
 from typing import Annotated, Any
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, Depends, Form, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.logging import get_logger, log_event, new_correlation_id
 from app.modules.ai.service import get_ai_service
 from app.modules.communications.models import Call
 from app.modules.communications.service import get_communication_service
+from app.modules.messaging.service import MessagingService
 from app.modules.workflows.engine import WorkflowEngine
 from app.modules.workflows.service import WorkflowService
 
@@ -34,33 +36,73 @@ async def _get_service(db: AsyncSession) -> WorkflowService:
 @router.post("/africastalking/sms")
 async def africastalking_sms(
     db: Annotated[AsyncSession, Depends(get_db)],
+    background: BackgroundTasks,
     from_: Annotated[str, Form(alias="from")] = "",
     to: str = Form(""),
     text: str = Form(""),
     id: str = Form(""),
     date: str = Form(""),
 ) -> dict:
-    """Incoming SMS delivery callback."""
+    """Incoming SMS delivery callback.
+
+    The message is logged and acknowledged right away; the workflow (which
+    may call the AI provider several times) runs after the response is sent.
+    """
     correlation = new_correlation_id()
     log_event(logger, "sms.received", correlation_id=correlation, sender=from_, to=to, provider="africastalking")
 
     service = await _get_service(db)
+    # Idempotency (spec section 45): AT retries deliveries it thinks failed.
+    if id and await service.sms_event_seen(id):
+        log_event(logger, "webhook.duplicate_ignored", provider_message_id=id)
+        return {"status": "duplicate_ignored", "run_id": None}
+
+    # Record the inbound message first so the Messages page shows it before
+    # any replies the workflow sends.
+    inbound = await MessagingService(db, None, None).log_inbound(
+        from_, to, text, provider_message_id=id or None,
+    )
     payload = {"from": from_, "called": to, "text": text, "event_id": id}
-    run = await service.dispatch_telecom_event(
+
+    if settings.sms_background_processing:
+        await db.commit()  # make the inbound record (and its id) visible to retries
+        background.add_task(_process_sms_in_background, payload, inbound.id)
+        return {"status": "accepted", "run_id": None, "message_id": inbound.id}
+
+    run = await _dispatch_sms(service, payload)
+    if run is None:
+        return {"status": "no_matching_workflow", "run_id": None}
+    inbound.run_id = run.id
+    return {"status": run.status.value, "run_id": run.id}
+
+
+async def _dispatch_sms(service: WorkflowService, payload: dict):
+    return await service.dispatch_telecom_event(
         trigger_type="incoming_sms",
         payload=payload,
         channel="sms",
-        a_number=from_,
-        b_number=to,
-        idempotency_key=id or None,
+        a_number=payload["from"],
+        b_number=payload["called"],
+        idempotency_key=payload["event_id"] or None,
     )
-    if run is None:
-        # Distinguish "we already processed this delivery" (idempotency,
-        # spec section 45) from "nothing matched" for observability.
-        duplicate = bool(id) and await service.sms_event_seen(id)
-        status = "duplicate_ignored" if duplicate else "no_matching_workflow"
-        return {"status": status, "run_id": None}
-    return {"status": run.status.value, "run_id": run.id}
+
+
+async def _process_sms_in_background(payload: dict, inbound_id: int) -> None:
+    from app.core.database import async_session_factory
+    from app.modules.messaging.models import MessageLog
+
+    async with async_session_factory() as session:
+        try:
+            run = await _dispatch_sms(await _get_service(session), payload)
+            inbound = await session.get(MessageLog, inbound_id)
+            if inbound is not None and run is not None:
+                inbound.run_id = run.id
+            await session.commit()
+            log_event(logger, "sms.processed", run_id=run.id if run else None,
+                      status=run.status.value if run else "no_matching_workflow")
+        except Exception:
+            await session.rollback()
+            logger.exception("sms.processing_failed")
 
 
 @router.post("/africastalking/voice")

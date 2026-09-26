@@ -25,10 +25,12 @@ async def providers() -> ProviderStatus:
             "sandbox": settings.at_sandbox,
             "phone_number": settings.at_phone_number or None,
             "sender_id": settings.at_sender_id or None,
+            "shortcode": settings.at_shortcode or None,
         },
         ai={
-            "provider": settings.ai_provider if settings.ai_configured else "stub",
+            "provider": settings.ai_provider_resolved if settings.ai_configured else "stub",
             "configured": settings.ai_configured,
+            "model": settings.ai_chat_model if settings.ai_configured else None,
         },
         environment=settings.environment,
     )

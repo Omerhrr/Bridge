@@ -24,11 +24,16 @@ class LanguageDetectionService:
         raise NotImplementedError
 
 
-class StubLanguageDetection(LanguageDetectionService):
-    async def detect(self, text: str) -> LanguageDetectionResult:
-        from app.modules.ai.translation import StubTranslationService
+class TranslatorLanguageDetection(LanguageDetectionService):
+    """Detection backed by the active translation service (LLM or stub)."""
 
-        return LanguageDetectionResult(language=StubTranslationService._detect(text))
+    def __init__(self, translation: TranslationService) -> None:
+        self._translation = translation
+
+    async def detect(self, text: str) -> LanguageDetectionResult:
+        language = await self._translation.detect(text)
+        return LanguageDetectionResult(language=language, confidence=0.9,
+                                       provider=type(self._translation).__name__)
 
 
 class AIService:
@@ -38,7 +43,7 @@ class AIService:
         self.speech: SpeechRecognitionService = get_speech_service()
         self.translation: TranslationService = get_translation_service()
         self.synthesis: SpeechSynthesisService = get_synthesis_service()
-        self.detection: LanguageDetectionService = StubLanguageDetection()
+        self.detection: LanguageDetectionService = TranslatorLanguageDetection(self.translation)
 
 
 def get_ai_service() -> AIService:

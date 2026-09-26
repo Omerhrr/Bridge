@@ -13,6 +13,7 @@ from app.api.routes import (
     communications,
     conversations,
     dashboard,
+    messaging,
     runs,
     settings_meta,
     webhooks,
@@ -26,10 +27,11 @@ _http_logger = get_logger("bridge.http")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.core.database import init_db
-    from app.seed import seed_demo_data
+    from app.seed import ensure_bridge_messenger, seed_demo_data
 
     await init_db()
     await seed_demo_data()
+    await ensure_bridge_messenger()
     yield
 
 
@@ -71,6 +73,7 @@ app.include_router(workflows.router, prefix=API_PREFIX)
 app.include_router(runs.router, prefix=API_PREFIX)
 app.include_router(conversations.router, prefix=API_PREFIX)
 app.include_router(communications.router, prefix=API_PREFIX)
+app.include_router(messaging.router, prefix=API_PREFIX)
 app.include_router(dashboard.router, prefix=API_PREFIX)
 app.include_router(settings_meta.router, prefix=API_PREFIX)
 app.include_router(webhooks.router, prefix=API_PREFIX)
@@ -83,7 +86,7 @@ async def health() -> dict:
         "app": settings.app_name,
         "environment": settings.environment,
         "telecom_provider": "africastalking" if settings.at_configured else "stub",
-        "ai_provider": settings.ai_provider if settings.ai_configured else "stub",
+        "ai_provider": settings.ai_provider_resolved if settings.ai_configured else "stub",
     }
 
 

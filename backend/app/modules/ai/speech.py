@@ -58,7 +58,7 @@ class HttpSpeechRecognition(SpeechRecognitionService):
             audio.raise_for_status()
             suffix = audio_url.rsplit(".", 1)[-1][:4] or "mp3"
             resp = await client.post(
-                f"{settings.ai_base_url or 'https://api.openai.com/v1'}/audio/transcriptions",
+                f"{settings.ai_base_url_resolved}/audio/transcriptions",
                 headers={"Authorization": f"Bearer {settings.ai_api_key}"},
                 files={"audio": (f"recording.{suffix}", audio.content, "application/octet-stream")},
                 data={"model": settings.ai_stt_model or "whisper-1"},
@@ -69,6 +69,8 @@ class HttpSpeechRecognition(SpeechRecognitionService):
 
 
 def get_speech_service() -> SpeechRecognitionService:
-    if settings.ai_configured:
+    # DeepSeek has no audio endpoints; speech needs an OpenAI-compatible host
+    # with /audio support. Voice prompts are spoken by Africa's Talking <Say>.
+    if settings.ai_configured and settings.ai_provider_resolved in ("openai", "custom"):
         return HttpSpeechRecognition()
     return StubSpeechRecognition()

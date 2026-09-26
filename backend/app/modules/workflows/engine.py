@@ -187,6 +187,7 @@ class WorkflowEngine:
             services={
                 "ai": self.ai,
                 "comms": self.comms,
+                "db": self.session,
                 "record_event": record,
             },
             trigger_payload=trigger_payload,

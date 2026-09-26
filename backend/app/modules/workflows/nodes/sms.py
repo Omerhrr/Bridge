@@ -38,18 +38,33 @@ class SendSmsNode(BaseNode):
             or ctx.variables.get("shortcode")
             or None
         )
-        try:
-            result = await comms.sms.send_sms(to=to, text=text, sender_id=sender_id)
-        except Exception as exc:
-            raise NodeExecutionError(f"Send SMS failed: {exc}") from exc
-        ctx.variables["sent_sms_id"] = result.message_id
+        db = ctx.services.get("db")
+        if db is not None:
+            # Route through the messaging service so the send is logged on the
+            # Messages page alongside relay and broadcast traffic.
+            from app.modules.messaging.service import MessagingService
+
+            delivery = await MessagingService(db, ctx.services.get("ai"), comms, run_id=ctx.run_id).deliver(
+                to, text, sender=sender_id, kind="reply", pretranslated=True,
+                original=ctx.variables.get("text") if text == ctx.variables.get("translation") else None,
+            )
+            if delivery.status == "failed":
+                raise NodeExecutionError(f"Send SMS failed: {delivery.error}")
+            message_id, status, simulated = delivery.message_id or "", delivery.status, delivery.status == "simulated"
+        else:
+            try:
+                result = await comms.sms.send_sms(to=to, text=text, sender_id=sender_id)
+            except Exception as exc:
+                raise NodeExecutionError(f"Send SMS failed: {exc}") from exc
+            message_id, status, simulated = result.message_id, result.status, result.simulated
+        ctx.variables["sent_sms_id"] = message_id
         await ctx.record(
             "sms.sent",
             self,
             to=to,
             sender_id=sender_id,
             text=text,
-            status=result.status,
-            simulated=result.simulated,
+            status=status,
+            simulated=simulated,
         )
-        return NodeResult(outputs={"message_id": result.message_id})
+        return NodeResult(outputs={"message_id": message_id})

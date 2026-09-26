@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Laptop, Smartphone, Monitor,
-  LayoutDashboard, Workflow, MessagesSquare, ListChecks, Settings,
+  LayoutDashboard, Workflow, MessagesSquare, ListChecks, Settings, Send, Users,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
@@ -12,11 +12,15 @@ onMounted(() => init())
 
 const navigation = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard },
+  { label: 'Messages', to: '/messages', icon: Send },
+  { label: 'Contacts', to: '/contacts', icon: Users },
   { label: 'Workflows', to: '/workflows', icon: Workflow },
   { label: 'Conversations', to: '/conversations', icon: MessagesSquare },
   { label: 'Runs', to: '/runs', icon: ListChecks },
   { label: 'Settings', to: '/settings', icon: Settings },
 ]
+// The mobile tab bar has room for five destinations.
+const mobileNavigation = navigation.filter((item) => !['/conversations', '/runs'].includes(item.to))
 
 const modeIcon = computed<Component>(() =>
   pref.value === 'auto' ? Laptop : pref.value === 'mobile' ? Smartphone : Monitor,
@@ -95,7 +99,7 @@ function isActive(to: string) {
     <!-- Mobile bottom tab navigation -->
     <nav v-if="isMobile" class="mobile-bottom-nav" aria-label="Primary">
       <NuxtLink
-        v-for="item in navigation"
+        v-for="item in mobileNavigation"
         :key="item.to"
         :to="item.to"
         class="tab"

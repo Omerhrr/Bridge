@@ -36,10 +36,12 @@ services:
         sync: false
       - key: AT_SENDER_ID
         sync: false
+      - key: AT_SHORTCODE
+        sync: false # sandbox shortcode people text, e.g. 57000
       - key: AT_SANDBOX
         value: "true"
       - key: AI_PROVIDER
-        value: stub
+        value: deepseek
       - key: AI_API_KEY
         sync: false
       - key: AI_BASE_URL

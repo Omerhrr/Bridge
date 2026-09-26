@@ -17,6 +17,7 @@ from app.modules.workflows.nodes.condition import (
     SwitchNode,
 )
 from app.modules.workflows.nodes.end import EndNode
+from app.modules.workflows.nodes.relay import BridgeRelayNode
 from app.modules.workflows.nodes.sms import SendSmsNode
 from app.modules.workflows.nodes.speech_to_text import SpeechToTextNode
 from app.modules.workflows.nodes.text_to_speech import TextToSpeechNode
@@ -41,6 +42,7 @@ NODE_REGISTRY: dict[str, type[BaseNode]] = {
         PlayVoiceNode,
         HangUpNode,
         SendSmsNode,
+        BridgeRelayNode,
         SpeechToTextNode,
         TranslateNode,
         TextToSpeechNode,

@@ -29,6 +29,8 @@ def _db_paths():
 @pytest.hookimpl(tryfirst=True)
 def pytest_sessionstart(session):
     os.environ.setdefault("SEED_DEMO_DATA", "false")
+    # Run SMS workflows inline so tests can assert on the run synchronously.
+    os.environ.setdefault("SMS_BACKGROUND_PROCESSING", "false")
     for path in _db_paths():
         if path.exists():
             path.unlink()
