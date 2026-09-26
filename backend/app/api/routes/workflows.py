@@ -12,6 +12,7 @@ from app.modules.workflows.models import WorkflowRun
 from app.modules.workflows.registry import list_node_metadata
 from app.modules.workflows.schemas import (
     TestRunRequest,
+    ValidationIssue,
     ValidationReport,
     VersionCreate,
     WorkflowCreate,
@@ -100,7 +101,30 @@ async def validate_workflow_id(workflow_id: int, service: ServiceDep) -> Validat
     if not workflow or not workflow.current_version:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Workflow not found")
     definition = WorkflowDefinition.model_validate(workflow.current_version.definition)
-    return validate_workflow(definition)
+    report = validate_workflow(definition)
+
+    if workflow.status.value == "active":
+        trigger_types = {
+            node.type for node in definition.nodes
+            if node.type in {"incoming_call", "incoming_sms", "ussd_request"}
+        }
+        conflicts = await service.find_conflicting_active_workflows(workflow, trigger_types)
+        seen: set[tuple[int, str]] = set()
+        for other, trigger_type in conflicts:
+            key = (other.id, trigger_type)
+            if key in seen:
+                continue
+            seen.add(key)
+            report.issues.append(
+                ValidationIssue(
+                    level="warning",
+                    message=(
+                        f"'{other.name}' is also active with the same trigger ({trigger_type}); "
+                        "only the most recently updated workflow will actually run for it"
+                    ),
+                )
+            )
+    return report
 
 
 @router.post("/{workflow_id}/test-run", response_model=WorkflowRunOut)

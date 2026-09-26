@@ -3,7 +3,7 @@ from typing import Any
 
 import asyncio
 
-from app.modules.workflows.nodes.base import BaseNode, NodeResult
+from app.modules.workflows.nodes.base import BaseNode, NodeResult, render_template
 
 
 class ConditionNode(BaseNode):
@@ -18,13 +18,14 @@ class ConditionNode(BaseNode):
         {"name": "operator", "label": "Operator", "type": "select", "required": True,
          "options": ["equals", "not_equals", "contains", "is_empty", "not_empty"],
          "default": "not_empty"},
-        {"name": "value", "label": "Value", "type": "text", "required": False},
+        {"name": "value", "label": "Value", "type": "text", "required": False,
+         "hint": "Supports {{variables}} for comparing against another variable"},
     ]
 
     async def execute(self, config: dict[str, Any], ctx) -> NodeResult:
         actual = ctx.variables.get(config.get("variable", ""), "")
         operator = config.get("operator", "not_empty")
-        value = config.get("value", "")
+        value = render_template(config.get("value", ""), ctx.variables)
 
         result = {
             "equals": str(actual) == str(value),
@@ -83,12 +84,13 @@ class SetVariableNode(BaseNode):
     icon = "variable"
     config_schema = [
         {"name": "name", "label": "Variable Name", "type": "text", "required": True},
-        {"name": "value", "label": "Value", "type": "text", "required": True},
+        {"name": "value", "label": "Value", "type": "text", "required": True,
+         "hint": "Supports {{variables}}, e.g. '{{transcript}} (confirmed)'"},
     ]
 
     async def execute(self, config: dict[str, Any], ctx) -> NodeResult:
         name = config.get("name", "")
-        value = config.get("value", "")
+        value = render_template(config.get("value", ""), ctx.variables)
         ctx.variables[name] = value
         await ctx.record("variable.set", self, name=name)
         return NodeResult(outputs={name: value})

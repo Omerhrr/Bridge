@@ -110,11 +110,21 @@ class WorkflowService:
         return version
 
     async def find_active_workflow_for_trigger(self, trigger_type: str, called_number: str | None = None) -> Workflow | None:
-        """Find an active workflow whose trigger matches an incoming event."""
+        """Find an active workflow whose trigger matches an incoming event.
+
+        More than one active workflow can declare the same trigger type (a
+        user testing a new SMS flow while an older one is still active, for
+        example). Without an explicit order, which one answers is whatever
+        order the database happens to return, so the same event could be
+        routed differently between requests. Preferring the most recently
+        updated workflow makes "the one I just activated" the one that
+        actually wins, which matches what a person editing workflows expects.
+        """
         result = await self.session.execute(
             select(Workflow)
             .where(Workflow.status == WorkflowStatus.active)
             .options(selectinload(Workflow.current_version))
+            .order_by(Workflow.updated_at.desc())
         )
         candidates = result.scalars().all()
         for workflow in candidates:
@@ -210,6 +220,36 @@ class WorkflowService:
                 conversation, role="caller", channel=channel, content=text
             )
         return run
+
+    async def find_conflicting_active_workflows(
+        self, workflow: Workflow, trigger_types: set[str],
+    ) -> list[tuple[Workflow, str]]:
+        """Other active workflows that would race this one for the same event.
+
+        Only one workflow can ever answer a given trigger type (see
+        ``find_active_workflow_for_trigger``), so activating a second one
+        with an overlapping trigger silently shadows whichever loses the
+        "most recently updated" tie-break — a mistake worth surfacing during
+        validation rather than letting someone find out from a customer's
+        message going to the wrong flow.
+        """
+        if not trigger_types:
+            return []
+        result = await self.session.execute(
+            select(Workflow)
+            .where(Workflow.status == WorkflowStatus.active, Workflow.id != workflow.id)
+            .options(selectinload(Workflow.current_version))
+        )
+        conflicts: list[tuple[Workflow, str]] = []
+        for other in result.scalars().all():
+            if not other.current_version:
+                continue
+            other_types = {
+                node.get("type") for node in other.current_version.definition.get("nodes", [])
+            }
+            for shared in trigger_types & other_types:
+                conflicts.append((other, shared))
+        return conflicts
 
     async def _find_waiting_ussd_run(self, session_id: str) -> WorkflowRun | None:
         """Locate a paused USSD run for an ongoing telecom session."""

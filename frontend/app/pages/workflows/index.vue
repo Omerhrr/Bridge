@@ -67,6 +67,13 @@ function formatDate(value: string) {
             <span class="pill-neutral">v{{ workflow.current_version?.version_number ?? 1 }}</span>
           </div>
           <p class="text-sm text-muted mt-1 truncate">{{ workflow.description || 'No description' }}</p>
+          <p
+            v-for="(warning, index) in store.activationWarnings[workflow.id] ?? []"
+            :key="index"
+            class="text-xs text-warning mt-1"
+          >
+            ⚠ {{ warning }}
+          </p>
         </div>
         <div class="flex items-center gap-2 sm:shrink-0">
           <span class="text-xs text-muted hidden md:inline">updated {{ formatDate(workflow.updated_at) }}</span>

@@ -17,6 +17,10 @@ export const useWorkflowsStore = defineStore('workflows', {
     loading: false,
     saving: false,
     error: '' as string,
+    /** Warnings from validating a workflow right after activating it (e.g.
+     * another active workflow already answers the same trigger), keyed by
+     * workflow id so the list page can show them next to the right row. */
+    activationWarnings: {} as Record<number, string[]>,
   }),
 
   actions: {
@@ -139,8 +143,27 @@ export const useWorkflowsStore = defineStore('workflows', {
         await api(`/workflows/${workflow.id}`, { method: 'PATCH', body: { status: next } })
         workflow.status = next
         if (this.current?.id === workflow.id) this.current.status = next
+        delete this.activationWarnings[workflow.id]
+        if (next === 'active') await this.checkActivationConflicts(workflow.id)
       } catch {
         this.error = 'Could not change the workflow status.'
+      }
+    },
+
+    /** After activating a workflow, surface any "another active workflow
+     * already answers this trigger" warnings right where the person just
+     * clicked Deploy, since they otherwise only appear inside the builder's
+     * Validate panel and are easy to miss. */
+    async checkActivationConflicts(id: number) {
+      const api = useApi()
+      try {
+        const report = await api<ValidationReport>(`/workflows/${id}/validate`, { method: 'POST' })
+        const warnings = report.issues
+          .filter((issue) => issue.level === 'warning' && issue.message.includes('same trigger'))
+          .map((issue) => issue.message)
+        if (warnings.length) this.activationWarnings[id] = warnings
+      } catch {
+        // Non-critical: the workflow is still active either way.
       }
     },
   },

@@ -1,7 +1,7 @@
 """Voice nodes (spec section 11): call control and playback."""
 from typing import Any
 
-from app.modules.workflows.nodes.base import BaseNode, NodeExecutionError, NodeResult
+from app.modules.workflows.nodes.base import BaseNode, NodeExecutionError, NodeResult, render_template
 
 
 class MakeCallNode(BaseNode):
@@ -58,8 +58,12 @@ class PlayAudioNode(BaseNode):
     ]
 
     async def execute(self, config: dict[str, Any], ctx) -> NodeResult:
-        await ctx.record("call.play_audio", self, url=config.get("url", ""))
-        return NodeResult()
+        url = render_template(config.get("url", ""), ctx.variables)
+        # Read by the voice webhook to build the call's <Play> response;
+        # without this the configured audio never actually reaches the call.
+        ctx.variables["audio_url"] = url
+        await ctx.record("call.play_audio", self, url=url)
+        return NodeResult(outputs={"audio_url": url})
 
 
 class PlayTextNode(BaseNode):
@@ -69,13 +73,26 @@ class PlayTextNode(BaseNode):
     description = "Reads text aloud to the caller"
     icon = "text-cursor-input"
     config_schema = [
-        {"name": "text", "label": "Text", "type": "text", "required": True},
+        {"name": "text", "label": "Text", "type": "text", "required": True,
+         "hint": "Supports {{variables}}; defaults to the translated text"},
         {"name": "language", "label": "Language", "type": "select", "required": False, "options": ["en", "ha", "sw", "yo", "ig"]},
     ]
 
     async def execute(self, config: dict[str, Any], ctx) -> NodeResult:
-        await ctx.record("call.play_text", self, text=config.get("text", ""))
-        return NodeResult()
+        text = (
+            render_template(config.get("text", ""), ctx.variables)
+            or ctx.variables.get("translation", "")
+        )
+        if not text:
+            raise NodeExecutionError("Play Text has no text to read")
+        # Read by the voice webhook to build the call's <Say> response;
+        # without this the configured text never actually reaches the call.
+        ctx.variables["translation"] = text
+        # A Play Audio/Text/Voice node further down the same call should
+        # speak this new line, not repeat an audio file queued earlier.
+        ctx.variables.pop("audio_url", None)
+        await ctx.record("call.play_text", self, text=text)
+        return NodeResult(outputs={"text": text})
 
 
 class PlayVoiceNode(BaseNode):

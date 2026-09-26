@@ -164,18 +164,25 @@ async def africastalking_voice(
     # Africa's Talking reads the raw response body as Voice XML, so it must be
     # returned as XML, not wrapped in a JSON object.
     if run is None:
-        return _voice_xml("No workflow is active. Goodbye.")
+        return _voice_xml(say="No workflow is active. Goodbye.")
 
+    # A Play Audio (or Text to Speech + Play Voice) node sets audio_url; a
+    # Play Text or Translate node sets translation. Either is what the
+    # workflow actually wants the caller to hear on this turn.
+    audio_url = str(run.variables.get("audio_url", "") or "")
     translation = str(run.variables.get("translation", "") or "")
-    return _voice_xml(translation or "Thank you for calling Bridge.")
+    if audio_url and not audio_url.startswith("stub://"):
+        return _voice_xml(play=audio_url)
+    return _voice_xml(say=translation or "Thank you for calling Bridge.")
 
 
-def _voice_xml(say: str) -> Response:
-    body = (
-        '<?xml version="1.0" encoding="UTF-8"?><Response>'
-        f"<Say>{xml_escape(say)}</Say>"
-        "</Response>"
-    )
+def _voice_xml(say: str | None = None, play: str | None = None) -> Response:
+    if play:
+        attr = xml_escape(play, {'"': "&quot;"})
+        action = f'<Play url="{attr}"/>'
+    else:
+        action = f"<Say>{xml_escape(say or '')}</Say>"
+    body = f'<?xml version="1.0" encoding="UTF-8"?><Response>{action}</Response>'
     return Response(content=body, media_type="application/xml")
 
 
