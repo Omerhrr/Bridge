@@ -22,6 +22,15 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      // Allow Cloudflare Quick Tunnel hosts, plus the custom tunnel domain,
+      // to reach the Vite dev server. Quick Tunnel hostnames are random per
+      // run, so that one is scoped to the whole trycloudflare.com domain
+      // rather than disabling the check entirely. Local dev-only setting;
+      // nuxt build doesn't run a Vite dev server, so `allowedHosts` has no
+      // effect in production.
+      allowedHosts: ['.trycloudflare.com', 'bridge.rogan.live'],
+    },
   },
 
   build: {

@@ -239,7 +239,7 @@ class WorkflowEngine:
             if next_node is None and outgoing:
                 # A handle was requested but no matching edge exists.
                 await record("branch.terminated", current.id, current.type,
-                             handle=result.next_handle or "default")
+                             payload={"handle": result.next_handle or "default"})
             current = next_node
 
         if steps >= MAX_STEPS:

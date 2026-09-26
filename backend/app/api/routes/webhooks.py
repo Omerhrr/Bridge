@@ -8,6 +8,7 @@ via the provider event id (idempotency, spec section 45). Webhook payloads
 are form-encoded for Africa's Talking.
 """
 from typing import Annotated, Any
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import APIRouter, Depends, Form, Request, Response
 from sqlalchemy import select
@@ -73,7 +74,7 @@ async def africastalking_voice(
     direction: str = Form("inbound"),
     dtmfDigits: str = Form(""),
     recordingUrl: str = Form(""),
-) -> dict:
+) -> Response:
     """Voice callback.
 
     Returns XML actions for the live voice loop; non-active (session end)
@@ -100,7 +101,8 @@ async def africastalking_voice(
     await db.flush()
 
     if isActive != "1":
-        return {"status": "call_ended"}
+        # End-of-call notification: AT ignores the body, just acknowledge.
+        return Response(status_code=200)
 
     service = await _get_service(db)
     payload = {
@@ -117,24 +119,22 @@ async def africastalking_voice(
         a_number=callerNumber,
         b_number=destinationNumber,
     )
+    # Africa's Talking reads the raw response body as Voice XML, so it must be
+    # returned as XML — not wrapped in a JSON object.
     if run is None:
-        # No active workflow matched: politely close the call.
-        return {
-            "action": "response",
-            "xml": '<?xml version="1.0" encoding="UTF-8"?><Response><Say>No workflow is active. Goodbye.</Say></Response>',
-        }
+        return _voice_xml("No workflow is active. Goodbye.")
 
-    translation = run.variables.get("translation", "")
-    return {
-        "status": run.status.value,
-        "run_id": run.id,
-        "action": "response",
-        "xml": (
-            '<?xml version="1.0" encoding="UTF-8"?><Response>'
-            f"<Say>{translation or 'Thank you for calling Bridge.'}</Say>"
-            "</Response>"
-        ),
-    }
+    translation = str(run.variables.get("translation", "") or "")
+    return _voice_xml(translation or "Thank you for calling Bridge.")
+
+
+def _voice_xml(say: str) -> Response:
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?><Response>'
+        f"<Say>{xml_escape(say)}</Say>"
+        "</Response>"
+    )
+    return Response(content=body, media_type="application/xml")
 
 
 @router.post("/africastalking/ussd")
