@@ -4,7 +4,7 @@ import {
   PhoneIncoming, PhoneOutgoing, PhoneOff, MessageSquare, Hash, Mic, AudioLines,
   TextCursorInput, Volume2, Send, Captions, Languages, Speech, GitBranch,
   Shuffle, Clock, Variable, Square, Circle, List, CornerDownLeft, Smartphone,
-  ArrowLeftRight,
+  ArrowLeftRight, BookOpen,
 } from 'lucide-vue-next'
 import type { NodeMeta } from '~/types'
 
@@ -43,6 +43,7 @@ const iconMap: Record<string, any> = {
   'corner-down-left': CornerDownLeft,
   smartphone: Smartphone,
   'arrow-left-right': ArrowLeftRight,
+  'book-open': BookOpen,
   square: Square,
   circle: Circle,
 }

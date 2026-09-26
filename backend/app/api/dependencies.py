@@ -1,10 +1,11 @@
 """Shared FastAPI dependencies."""
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.modules.ai.service import AIService, get_ai_service
@@ -33,7 +34,26 @@ async def get_current_user_optional(
     from sqlalchemy import select
 
     result = await db.execute(select(User).where(User.email == subject))
-    return result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
+    return user if user and user.is_active else None
+
+
+async def require_user(
+    user: Annotated[User | None, Depends(get_current_user_optional)],
+) -> User | None:
+    """Gate for every dashboard/API route (webhooks and health stay public).
+    Disabled with AUTH_ENABLED=false (tests, local experiments)."""
+    if not settings.auth_enabled:
+        return user
+    if user is None:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Sign in to continue",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+CurrentUser = Annotated[User | None, Depends(require_user)]
 
 
 def get_engine_factory(db: DbSession):

@@ -31,6 +31,8 @@ def pytest_sessionstart(session):
     os.environ.setdefault("SEED_DEMO_DATA", "false")
     # Run SMS workflows inline so tests can assert on the run synchronously.
     os.environ.setdefault("SMS_BACKGROUND_PROCESSING", "false")
+    # API tests exercise routes directly; test_auth.py switches auth back on.
+    os.environ.setdefault("AUTH_ENABLED", "false")
     for path in _db_paths():
         if path.exists():
             path.unlink()

@@ -73,6 +73,16 @@ class Settings(BaseSettings):
     ai_translation_model: str = ""
     ai_tts_model: str = ""
 
+    # Knowledge sources may only point at public hosts unless this is set
+    # (e.g. a database on the same private network as Bridge).
+    allow_private_sources: bool = False
+    # First account can always be created; further self-registration only
+    # when this is on.
+    allow_registration: bool = False
+    # Required to create the first (owner) account in production, so a
+    # stranger who finds the URL first can't claim the dashboard.
+    setup_code: str = ""
+
     # Supported languages for validation (BCP-47 style codes)
     supported_languages: str = "en,ha,sw,yo,ig,am,fr,ar,zu"
 

@@ -189,7 +189,7 @@ export interface Contact {
 export interface MessageLogEntry {
   id: number
   direction: 'inbound' | 'outbound'
-  kind: 'inbound' | 'relay' | 'broadcast' | 'reply' | 'system' | 'workflow'
+  kind: 'inbound' | 'relay' | 'broadcast' | 'reply' | 'system' | 'workflow' | 'answer'
   from_number: string | null
   to_number: string | null
   original_text: string | null
@@ -224,4 +224,64 @@ export interface MessagingInfo {
   ai_provider: string
   ai_configured: boolean
   sandbox: boolean
+}
+
+// ---- Knowledge ------------------------------------------------------------
+
+export type KnowledgeKind = 'website' | 'google_doc' | 'google_sheet' | 'database' | 'text'
+
+export interface BusinessProfile {
+  name: string
+  description: string
+  contact: string
+  fallback_message: string
+  assistant_enabled: boolean
+  sources: number
+  ready_sources: number
+  passages: number
+  questions: number
+  unanswered: number
+  ai_configured: boolean
+  available: boolean
+}
+
+export interface KnowledgeSource {
+  id: number
+  name: string
+  kind: KnowledgeKind
+  config: Record<string, any>
+  has_secret: boolean
+  status: 'pending' | 'syncing' | 'ready' | 'error'
+  error: string | null
+  chunk_count: number
+  last_synced_at: string | null
+  created_at: string
+}
+
+export interface KnowledgeChunk {
+  id: number
+  title: string
+  location: string
+  content: string
+}
+
+export interface AskResult {
+  answered: boolean
+  answer: string
+  reason: string
+  language: string | null
+  evidence: string[]
+  sources: { source_id: number; source_name: string; title: string; location: string; excerpt: string }[]
+}
+
+export interface KnowledgeQuery {
+  id: number
+  phone_number: string | null
+  channel: string
+  question: string
+  answer: string
+  answered: boolean
+  reason: string
+  language: string | null
+  created_at: string
 }

@@ -169,6 +169,7 @@ const KIND_LABEL: Record<string, string> = {
   reply: 'Workflow reply',
   system: 'Bridge reply',
   workflow: 'Workflow',
+  answer: 'Assistant answer',
 }
 
 function whoLabel(phone: string | null) {
@@ -220,7 +221,7 @@ onUnmounted(() => clearInterval(timer))
 
     <div class="grid gap-5 lg:grid-cols-5">
       <!-- Compose -->
-      <div class="lg:col-span-2 space-y-5">
+      <div class="lg:col-span-2 space-y-5 min-w-0">
         <section class="card p-5">
           <h2 class="text-sm font-semibold mb-4">New message</h2>
 
@@ -348,12 +349,14 @@ onUnmounted(() => clearInterval(timer))
             <div class="flex gap-3"><dt class="font-mono font-medium w-40 shrink-0">LANG Swahili</dt><dd class="text-muted">Choose your language</dd></div>
             <div class="flex gap-3"><dt class="font-mono font-medium w-40 shrink-0">STOP</dt><dd class="text-muted">End the chat</dd></div>
             <div class="flex gap-3"><dt class="font-mono font-medium w-40 shrink-0">HELP</dt><dd class="text-muted">Show these commands</dd></div>
+            <div class="flex gap-3"><dt class="font-mono font-medium w-40 shrink-0">(a question)</dt><dd class="text-muted">Answered from your <NuxtLink to="/knowledge" class="text-signal hover:underline">knowledge base</NuxtLink> when not in a chat</dd></div>
+            <div class="flex gap-3"><dt class="font-mono font-medium w-40 shrink-0">ASK …</dt><dd class="text-muted">Ask a question during a chat</dd></div>
           </dl>
         </section>
       </div>
 
       <!-- Log -->
-      <section class="lg:col-span-3 card flex flex-col min-h-[420px]">
+      <section class="lg:col-span-3 card flex flex-col min-h-[420px] min-w-0">
         <div class="px-5 py-3 border-b border-line flex flex-wrap items-center gap-2">
           <h2 class="text-sm font-semibold mr-auto">Message log</h2>
           <div class="inline-flex rounded-md border border-line p-0.5 text-xs">

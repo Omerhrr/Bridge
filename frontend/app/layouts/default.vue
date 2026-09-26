@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Laptop, Smartphone, Monitor,
-  LayoutDashboard, Workflow, MessagesSquare, ListChecks, Settings, Send, Users,
+  LayoutDashboard, Workflow, MessagesSquare, ListChecks, Settings, Send, Users, BookOpen, LogOut,
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
@@ -14,13 +14,16 @@ const navigation = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard },
   { label: 'Messages', to: '/messages', icon: Send },
   { label: 'Contacts', to: '/contacts', icon: Users },
+  { label: 'Knowledge', to: '/knowledge', icon: BookOpen },
   { label: 'Workflows', to: '/workflows', icon: Workflow },
   { label: 'Conversations', to: '/conversations', icon: MessagesSquare },
   { label: 'Runs', to: '/runs', icon: ListChecks },
   { label: 'Settings', to: '/settings', icon: Settings },
 ]
 // The mobile tab bar has room for five destinations.
-const mobileNavigation = navigation.filter((item) => !['/conversations', '/runs'].includes(item.to))
+const mobileNavigation = navigation.filter((item) => !['/conversations', '/runs', '/contacts'].includes(item.to))
+
+const { user, logout } = useAuth()
 
 const modeIcon = computed<Component>(() =>
   pref.value === 'auto' ? Laptop : pref.value === 'mobile' ? Smartphone : Monitor,
@@ -44,7 +47,7 @@ function isActive(to: string) {
             <span class="block w-2.5 h-2.5 rounded-full bg-comms animate-pulse" />
           </span>
           <span class="text-lg font-semibold tracking-tight">Bridge</span>
-          <span class="hidden lg:inline text-[10px] uppercase tracking-widest text-white/40 mt-1">communication</span>
+          <span class="hidden 2xl:inline text-[10px] uppercase tracking-widest text-white/40 mt-1">communication</span>
         </NuxtLink>
 
         <!-- Desktop navigation -->
@@ -61,13 +64,23 @@ function isActive(to: string) {
         </nav>
 
         <div class="ml-auto flex items-center gap-2">
-          <span v-if="!isMobile" class="hidden md:flex items-center gap-2 text-sm">
+          <span v-if="!isMobile" class="hidden 2xl:flex items-center gap-2 text-sm whitespace-nowrap">
             <span class="relative flex h-2 w-2">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
               <span class="relative inline-flex rounded-full h-2 w-2 bg-success" />
             </span>
             <span class="text-white/70">Status: OK</span>
           </span>
+
+          <button
+            v-if="user"
+            class="h-9 px-2.5 inline-flex items-center gap-1.5 rounded-md hover:bg-white/10 text-sm text-white/80 transition-colors"
+            :title="`Signed in as ${user.email} — sign out`"
+            @click="logout()"
+          >
+            <LogOut class="w-4 h-4" :stroke-width="1.8" />
+            <span class="hidden 2xl:inline text-xs whitespace-nowrap">{{ user.full_name || user.email }}</span>
+          </button>
 
           <!-- Device mode toggle: Auto → Mobile → Desktop -->
           <button

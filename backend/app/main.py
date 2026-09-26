@@ -3,9 +3,10 @@ from contextlib import asynccontextmanager
 
 import time
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.dependencies import require_user
 from app.core.config import settings
 from app.core.logging import get_logger, log_event, setup_logging
 from app.api.routes import (
@@ -13,6 +14,7 @@ from app.api.routes import (
     communications,
     conversations,
     dashboard,
+    knowledge,
     messaging,
     runs,
     settings_meta,
@@ -27,11 +29,13 @@ _http_logger = get_logger("bridge.http")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.core.database import init_db
-    from app.seed import ensure_bridge_messenger, seed_demo_data
+    from app.seed import ensure_bridge_messenger, reset_interrupted_syncs, secure_default_accounts, seed_demo_data
 
     await init_db()
     await seed_demo_data()
     await ensure_bridge_messenger()
+    await secure_default_accounts()
+    await reset_interrupted_syncs()
     yield
 
 
@@ -68,15 +72,15 @@ async def log_webhook_timing(request: Request, call_next):
     )
     return response
 
+# Public: sign-in, telecom webhooks and the health check.
 app.include_router(auth.router, prefix=API_PREFIX)
-app.include_router(workflows.router, prefix=API_PREFIX)
-app.include_router(runs.router, prefix=API_PREFIX)
-app.include_router(conversations.router, prefix=API_PREFIX)
-app.include_router(communications.router, prefix=API_PREFIX)
-app.include_router(messaging.router, prefix=API_PREFIX)
-app.include_router(dashboard.router, prefix=API_PREFIX)
-app.include_router(settings_meta.router, prefix=API_PREFIX)
 app.include_router(webhooks.router, prefix=API_PREFIX)
+
+# Everything else requires a signed-in user.
+_protected = [Depends(require_user)]
+for _router in (workflows.router, runs.router, conversations.router, communications.router,
+                messaging.router, knowledge.router, dashboard.router, settings_meta.router):
+    app.include_router(_router, prefix=API_PREFIX, dependencies=_protected)
 
 
 @app.get("/api/v1/health", tags=["health"])

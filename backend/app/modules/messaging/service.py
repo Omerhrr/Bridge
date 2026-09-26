@@ -14,6 +14,8 @@ SMS commands (case-insensitive):
     LANG <language>         set your language (code or name, e.g. "LANG Swahili")
     STOP                    end the current chat
     HELP                    how it works
+    ASK <question>          ask the business (knowledge base) — also the
+                            default for any message sent outside a chat
 """
 from __future__ import annotations
 
@@ -27,6 +29,7 @@ from app.core.config import settings
 from app.core.logging import get_logger, log_event
 from app.modules.ai.languages import language_name, normalize_language
 from app.modules.contacts.models import Contact
+from app.modules.knowledge.assistant import KnowledgeAssistant
 from app.modules.messaging.models import BridgeProfile, MessageLog
 
 logger = get_logger("bridge.messaging")
@@ -53,6 +56,7 @@ _COMMAND_TO = re.compile(r"^\s*(?:to\s+|@)(\+?[\d\s\-()]{7,20})\s*[:,]?\s*(.*)$"
 _COMMAND_LANG = re.compile(r"^\s*lang(?:uage)?\s+(.+?)\s*$", re.I)
 _COMMAND_STOP = re.compile(r"^\s*(stop|end|bye)\s*$", re.I)
 _COMMAND_HELP = re.compile(r"^\s*(help|menu|\?)\s*$", re.I)
+_COMMAND_ASK = re.compile(r"^\s*ask\b[\s:,-]*(.*)$", re.I | re.S)
 
 
 class InvalidPhoneNumber(ValueError):
@@ -313,8 +317,20 @@ class MessagingService:
             localized = await self.localize(message, sender)
             return await self.deliver(sender, localized, sender=reply_from, kind="system", pretranslated=True)
 
+        assistant = KnowledgeAssistant(self.session, self.ai)
+        assistant_on = await assistant.is_available()
+
         if not text or _COMMAND_HELP.match(text):
-            return RelayOutcome("help", [await reply(HELP_TEXT)])
+            return RelayOutcome("help", [await reply(await self._help_text(assistant, assistant_on))])
+
+        if match := _COMMAND_ASK.match(text):
+            question = match.group(1).strip()
+            if not assistant_on:
+                return RelayOutcome("ask_unavailable", [await reply(
+                    "Questions aren't available right now. " + HELP_TEXT)])
+            if not question:
+                return RelayOutcome("ask_empty", [await reply("Type your question after ASK, e.g. ASK What are your opening hours?")])
+            return await self._answer_question(assistant, sender, question, reply_from)
 
         if match := _COMMAND_LANG.match(text):
             code = normalize_language(match.group(1))
@@ -369,13 +385,34 @@ class MessagingService:
                 )])
             return RelayOutcome("relayed", [delivery])
 
-        # No open chat: learn their language from the message, then onboard.
+        # No open chat: the business assistant answers, if one is configured.
+        if assistant_on:
+            return await self._answer_question(assistant, sender, text, reply_from)
+
+        # Otherwise learn their language from the message, then onboard.
         try:
             detected = await self.ai.translation.detect(text)
             await self.learn_language(sender, detected)
         except Exception:
             pass
         return RelayOutcome("onboarding", [await reply(HELP_TEXT)])
+
+    async def _help_text(self, assistant: KnowledgeAssistant, assistant_on: bool) -> str:
+        if not assistant_on:
+            return HELP_TEXT
+        name = (await assistant.profile()).name or "us"
+        return f"Ask {name} anything: just text your question (or ASK <question> during a chat).\n" + HELP_TEXT
+
+    async def _answer_question(self, assistant: KnowledgeAssistant, sender: str, question: str,
+                               reply_from: str | None) -> RelayOutcome:
+        from app.modules.knowledge.service import log_query
+
+        result = await assistant.answer(question)
+        await self.learn_language(sender, result.language)
+        await log_query(self.session, question, result, phone=sender, channel="sms")
+        delivery = await self.deliver(sender, result.text, sender=reply_from, kind="answer",
+                                      pretranslated=True, source_language=result.language)
+        return RelayOutcome("answered" if result.answered else f"answer_{result.reason}", [delivery])
 
     async def _relay(self, sender: str, partner: str, text: str, reply_from: str | None,
                      first: bool = False) -> DeliveryResult:

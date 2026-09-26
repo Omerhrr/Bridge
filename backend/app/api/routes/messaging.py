@@ -103,7 +103,7 @@ class TranslateOut(BaseModel):
 async def preview_translation(data: TranslateIn, ai: AiServiceDep) -> TranslateOut:
     target = normalize_language(data.language)
     if not target:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unsupported language '{data.language}'")
+        raise HTTPException(422, f"Unsupported language '{data.language}'")
     try:
         result = await ai.translation.translate(data.text, source="auto", target=target)
     except Exception as exc:
@@ -172,7 +172,7 @@ def _clean_language(value: str | None) -> str | None:
         return None
     code = normalize_language(value)
     if not code:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unsupported language '{value}'")
+        raise HTTPException(422, f"Unsupported language '{value}'")
     return code
 
 
@@ -206,7 +206,7 @@ async def upsert_contact(data: ContactIn, db: DbSession) -> ContactOut:
     try:
         phone = normalize_phone(data.phone_number)
     except InvalidPhoneNumber as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+        raise HTTPException(422, str(exc)) from exc
     language = _clean_language(data.language)
     service = MessagingService(db, None, None)
     contact = await service.ensure_contact(phone)

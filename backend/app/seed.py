@@ -14,6 +14,9 @@ from app.modules.workflows.schemas import WorkflowDefinition
 
 logger = get_logger("bridge.seed")
 
+DEMO_EMAIL = "demo@bridge.app"
+DEMO_PASSWORD = "bridge-demo-2026"  # published in the repo: never valid in production
+
 VOICE_TRANSLATOR = WorkflowDefinition(
     nodes=[
         {"id": "1", "type": "incoming_call", "position": {"x": 0, "y": 200}, "config": {}},
@@ -116,14 +119,15 @@ async def seed_demo_data() -> None:
         if count > 0:
             return
 
-        # Demo user for the authenticated dashboard (spec section 32).
+        # Demo user for local development only — in production the owner
+        # creates their account on first sign-in (with SETUP_CODE).
         user_count = (await session.execute(select(func.count()).select_from(User))).scalar_one()
-        if user_count == 0:
+        if user_count == 0 and settings.environment != "production":
             session.add(
                 User(
-                    email="demo@bridge.app",
+                    email=DEMO_EMAIL,
                     full_name="Bridge Demo",
-                    hashed_password=hash_password("bridge-demo-2026"),
+                    hashed_password=hash_password(DEMO_PASSWORD),
                 )
             )
 
@@ -191,3 +195,29 @@ async def ensure_bridge_messenger() -> None:
         workflow.current_version_id = version.id
         await session.commit()
         log_event(logger, "seed.bridge_messenger_installed")
+
+
+async def secure_default_accounts() -> None:
+    """The demo account's password is public (it's in this repository).
+    In production it is switched off at startup, so the owner must create
+    a real account on the sign-in page."""
+    if settings.environment != "production":
+        return
+    from app.core.database import async_session_factory
+    from app.core.security import verify_password
+
+    async with async_session_factory() as session:
+        demo = (await session.execute(select(User).where(User.email == DEMO_EMAIL))).scalar_one_or_none()
+        if demo and demo.is_active and verify_password(DEMO_PASSWORD, demo.hashed_password):
+            demo.is_active = False
+            await session.commit()
+            log_event(logger, "seed.demo_account_disabled")
+
+
+async def reset_interrupted_syncs() -> None:
+    from app.core.database import async_session_factory
+    from app.modules.knowledge.service import reset_stuck_syncs
+
+    async with async_session_factory() as session:
+        await reset_stuck_syncs(session)
+        await session.commit()
