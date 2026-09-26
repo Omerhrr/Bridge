@@ -29,7 +29,7 @@ function workflowName(workflowId: number) {
   <div>
     <div class="mb-5">
       <h1 class="text-xl font-semibold tracking-tight">Workflow Runs</h1>
-      <p class="text-sm text-muted mt-0.5">Execution history — what ran, when, and whether it succeeded</p>
+      <p class="text-sm text-muted mt-0.5">Execution history: what ran, when, and whether it succeeded</p>
     </div>
 
     <p v-if="error" class="card p-4 text-sm text-error bg-error-soft border-error/40 mb-4">{{ error }}</p>

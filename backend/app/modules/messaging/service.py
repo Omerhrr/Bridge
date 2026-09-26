@@ -14,7 +14,7 @@ SMS commands (case-insensitive):
     LANG <language>         set your language (code or name, e.g. "LANG Swahili")
     STOP                    end the current chat
     HELP                    how it works
-    ASK <question>          ask the business (knowledge base) — also the
+    ASK <question>          ask the business (knowledge base); also the
                             default for any message sent outside a chat
 """
 from __future__ import annotations

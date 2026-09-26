@@ -173,7 +173,7 @@ const KIND_LABEL: Record<string, string> = {
 }
 
 function whoLabel(phone: string | null) {
-  if (!phone) return '—'
+  if (!phone) return 'n/a'
   if (info.value?.default_sender && phone === info.value.default_sender) return `Bridge (${phone})`
   const contact = contactByPhone.value.get(phone)
   return contact?.name ? `${contact.name}` : phone
@@ -259,7 +259,7 @@ onUnmounted(() => clearInterval(timer))
             >
               <option value="" disabled>Add a contact…</option>
               <option v-for="c in availableContacts" :key="c.id" :value="c.phone_number">
-                {{ c.name || c.phone_number }}{{ c.language_name ? ` — ${c.language_name}` : '' }}
+                {{ c.name || c.phone_number }}{{ c.language_name ? ` (${c.language_name})` : '' }}
               </option>
             </select>
           </div>
@@ -281,7 +281,7 @@ onUnmounted(() => clearInterval(timer))
           <label class="label mt-4" for="language-mode">Deliver in</label>
           <select id="language-mode" v-model="languageMode" class="input">
             <option value="contact">Each recipient's language (from contacts)</option>
-            <option value="none">Original text — don't translate</option>
+            <option value="none">Original text, don't translate</option>
             <optgroup label="Everyone in…">
               <option v-for="l in languages" :key="l.code" :value="l.code">{{ l.name }}</option>
             </optgroup>
@@ -341,7 +341,7 @@ onUnmounted(() => clearInterval(timer))
             <h2 class="text-sm font-semibold">Chat by SMS through Bridge</h2>
           </div>
           <p class="text-xs text-muted mb-3">
-            Anyone can text {{ info?.default_sender || 'the Bridge shortcode' }} — no app, no data. Each person reads the conversation in their own language.
+            Anyone can text {{ info?.default_sender || 'the Bridge shortcode' }}: no app, no data. Each person reads the conversation in their own language.
           </p>
           <dl class="space-y-2 text-xs">
             <div class="flex gap-3"><dt class="font-mono font-medium w-40 shrink-0">TO +2547… Hello</dt><dd class="text-muted">Start a chat with someone</dd></div>

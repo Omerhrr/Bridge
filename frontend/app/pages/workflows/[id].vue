@@ -155,7 +155,7 @@ async function save() {
 }
 
 async function validate() {
-  // Lint the canvas as-is — no version is created, so repeated Validate
+  // Lint the canvas as-is; no version is created, so repeated Validate
   // clicks do not pollute the immutable version history.
   await store.validateDefinition(toDefinition())
   showPanel.value = 'validation'
@@ -196,7 +196,7 @@ const hasResults = computed(() => !!store.lastReport || !!store.lastRun)
 
 <template>
   <div>
-    <!-- Builder toolbar (spec section 20) — text labels collapse to icons in mobile mode -->
+    <!-- Builder toolbar (spec section 20); text labels collapse to icons in mobile mode -->
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <button class="btn-ghost shrink-0" title="Back to workflows" @click="router.push('/workflows')">
         ← <span class="hidden sm:inline">Workflows</span>
@@ -210,7 +210,7 @@ const hasResults = computed(() => !!store.lastReport || !!store.lastRun)
       <span class="hidden sm:inline-flex" :class="store.current?.status === 'active' ? 'pill-success' : 'pill-neutral'">
         {{ store.current?.status === 'active' ? '● Active' : '○ Inactive' }}
       </span>
-      <span class="text-xs text-muted shrink-0">v{{ store.current?.current_version?.version_number ?? '—' }}</span>
+      <span class="text-xs text-muted shrink-0">v{{ store.current?.current_version?.version_number ?? 'n/a' }}</span>
 
       <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
         <button class="btn-secondary shrink-0" :disabled="saving" title="Save version" @click="save">
@@ -298,7 +298,7 @@ const hasResults = computed(() => !!store.lastReport || !!store.lastRun)
 
     <!-- Mobile sheets -->
     <ClientOnly>
-      <UiBottomSheet :open="sheet === 'palette'" title="Node library — tap to add" @close="sheet = null">
+      <UiBottomSheet :open="sheet === 'palette'" title="Node library: tap to add" @close="sheet = null">
         <WorkflowNodePalette variant="sheet" @add="addFromPalette" />
       </UiBottomSheet>
 

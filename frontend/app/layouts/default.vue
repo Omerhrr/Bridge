@@ -75,7 +75,7 @@ function isActive(to: string) {
           <button
             v-if="user"
             class="h-9 px-2.5 inline-flex items-center gap-1.5 rounded-md hover:bg-white/10 text-sm text-white/80 transition-colors"
-            :title="`Signed in as ${user.email} — sign out`"
+            :title="`Signed in as ${user.email}, sign out`"
             @click="logout()"
           >
             <LogOut class="w-4 h-4" :stroke-width="1.8" />
@@ -85,7 +85,7 @@ function isActive(to: string) {
           <!-- Device mode toggle: Auto → Mobile → Desktop -->
           <button
             class="h-9 px-2.5 inline-flex items-center gap-1.5 rounded-md bg-white/10 hover:bg-white/20 text-sm text-white/90 transition-colors"
-            :title="`UI mode: ${modeLabel} — click to switch`"
+            :title="`UI mode: ${modeLabel}, click to switch`"
             @click="cycle()"
           >
             <component :is="modeIcon" class="w-4 h-4" :stroke-width="1.8" />
@@ -104,7 +104,7 @@ function isActive(to: string) {
 
     <footer v-if="!isMobile" class="border-t border-line bg-surface">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 h-12 flex items-center justify-between text-xs text-muted">
-        <span>Bridge — communication across language and connectivity barriers</span>
+        <span>Bridge: communication across language and connectivity barriers</span>
         <span class="hidden sm:inline">FastAPI · Nuxt · Vue Flow · Africa's Talking</span>
       </div>
     </footer>

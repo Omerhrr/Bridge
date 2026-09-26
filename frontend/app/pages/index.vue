@@ -34,7 +34,7 @@ function channelLabel(channel: string) {
     <div class="flex items-center justify-between mb-5">
       <div>
         <h1 class="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <p class="text-sm text-muted mt-0.5">System overview — is Bridge working, and what happened recently</p>
+        <p class="text-sm text-muted mt-0.5">System overview: is Bridge working, and what happened recently</p>
       </div>
       <button class="btn-secondary" @click="load">
         <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': loading }" :stroke-width="1.8" />

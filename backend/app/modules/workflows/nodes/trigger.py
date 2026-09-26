@@ -41,7 +41,7 @@ class IncomingSmsNode(BaseNode):
         payload = ctx.trigger_payload
         ctx.variables["sender"] = payload.get("from") or "unknown"
         ctx.variables["text"] = payload.get("text", "")
-        # The shortcode / number the SMS was sent to — replies go out from it.
+        # The shortcode / number the SMS was sent to; replies go out from it.
         ctx.variables["shortcode"] = payload.get("called") or config.get("phone_number", "")
         ctx.variables["channel"] = "sms"
         await ctx.record("sms.received", self, sender=ctx.variables["sender"])

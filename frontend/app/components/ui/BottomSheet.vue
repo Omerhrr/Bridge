@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { X } from 'lucide-vue-next'
 
-/** Mobile bottom sheet — used by the builder for palette / inspector / results
+/** Mobile bottom sheet, used by the builder for palette / inspector / results
  * and available anywhere the desktop layout needs a mobile-friendly panel. */
 const props = defineProps<{ open: boolean; title?: string }>()
 const emit = defineEmits<{ (e: 'close'): void }>()

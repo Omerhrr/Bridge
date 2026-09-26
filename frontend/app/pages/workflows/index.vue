@@ -29,13 +29,13 @@ function formatDate(value: string) {
     <div class="flex items-center justify-between mb-5">
       <div>
         <h1 class="text-xl font-semibold tracking-tight">Workflows</h1>
-        <p class="text-sm text-muted mt-0.5">Visual communication logic — triggers, AI transformations, responses</p>
+        <p class="text-sm text-muted mt-0.5">Visual communication logic: triggers, AI transformations, responses</p>
       </div>
     </div>
 
     <!-- Create form -->
     <form class="card p-4 mb-4 flex flex-col sm:flex-row gap-3 sm:items-center" @submit.prevent="create">
-      <input v-model="newName" type="text" placeholder="New workflow name — e.g. Voice Translator EN→HA" class="input sm:max-w-md" required />
+      <input v-model="newName" type="text" placeholder="New workflow name, e.g. Voice Translator EN to HA" class="input sm:max-w-md" required />
       <button type="submit" class="btn-primary" :disabled="creating || !newName.trim()">
         <Plus class="w-4 h-4" :stroke-width="2" />
         {{ creating ? 'Creating…' : 'New Workflow' }}

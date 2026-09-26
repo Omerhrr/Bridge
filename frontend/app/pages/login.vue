@@ -26,7 +26,7 @@ onMounted(async () => {
   try {
     setup.value = await api<SetupStatus>('/auth/setup')
   } catch {
-    error.value = 'Bridge is starting up — this can take up to a minute. Refresh in a moment.'
+    error.value = 'Bridge is starting up. This can take up to a minute. Refresh in a moment.'
   } finally {
     loading.value = false
   }
@@ -125,7 +125,7 @@ async function submit() {
           </button>
         </form>
       </div>
-      <p class="text-center text-[11px] text-muted mt-4">Bridge — communication across language barriers</p>
+      <p class="text-center text-[11px] text-muted mt-4">Bridge: communication across language barriers</p>
     </div>
   </div>
 </template>

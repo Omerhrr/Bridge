@@ -59,7 +59,7 @@ API_PREFIX = "/api/v1"
 
 @app.middleware("http")
 async def log_webhook_timing(request: Request, call_next):
-    """Log status and latency of telecom webhooks (visible in Render logs) —
+    """Log status and latency of telecom webhooks (visible in Render logs):
     USSD gateways time out after a few seconds, so this is the first thing
     to check when a session shows the provider's generic error screen."""
     if "/webhooks/" not in request.url.path:

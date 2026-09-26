@@ -53,7 +53,7 @@ class KnowledgeChunk(Base):
 
 
 class KnowledgeQuery(Base):
-    """Every question the assistant handled — unanswered ones tell the
+    """Every question the assistant handled; unanswered ones tell the
     business owner which information to add."""
 
     __tablename__ = "knowledge_queries"

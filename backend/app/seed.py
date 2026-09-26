@@ -119,7 +119,7 @@ async def seed_demo_data() -> None:
         if count > 0:
             return
 
-        # Demo user for local development only — in production the owner
+        # Demo user for local development only; in production the owner
         # creates their account on first sign-in (with SETUP_CODE).
         user_count = (await session.execute(select(func.count()).select_from(User))).scalar_one()
         if user_count == 0 and settings.environment != "production":

@@ -7,7 +7,7 @@ against the process working directory. Two hazards this conftest removes:
    a UNIQUE constraint), so every test DB artifact is removed before the
    session starts and after it finishes.
 2. ``app.main`` is imported only once per pytest process, so only the first
-   test module's environment variables take effect — all integration modules
+   test module's environment variables take effect; all integration modules
    share one database. With the files wiped up front that shared database is
    empty at session start, which keeps the modules order-independent.
 """

@@ -249,7 +249,7 @@ async def ingest_google_sheet(url: str) -> list[Chunk]:
 
 # ---------------------------------------------------------------- database
 _SELECT_ONLY = re.compile(r"^\s*(select|with)\b", re.I)
-# Defence in depth only — the session itself is opened read-only.
+# Defence in depth only: the session itself is opened read-only.
 _FORBIDDEN_SQL = re.compile(r"\b(insert|update|delete|drop|alter|create|truncate|grant|revoke)\b", re.I)
 
 

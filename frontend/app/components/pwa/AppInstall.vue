@@ -74,7 +74,7 @@ const showBanner = computed(
       </span>
       <div>
         <h2 class="text-sm font-semibold">Install as app</h2>
-        <p class="text-xs text-muted">Bridge is a Progressive Web App — installable on phones, tablets and desktops</p>
+        <p class="text-xs text-muted">Bridge is a Progressive Web App, installable on phones, tablets and desktops</p>
       </div>
       <span v-if="installed" class="pill-success ml-auto">
         <CheckCircle2 class="w-3.5 h-3.5" :stroke-width="2" /> Installed

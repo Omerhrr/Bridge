@@ -32,7 +32,7 @@ const emit = defineEmits<{ (e: 'select', nodeId: string): void }>()
         <span class="text-ink/90">{{ issue.message }}</span>
       </li>
       <li v-if="!issues.length" class="flex items-center gap-2 text-sm text-success p-1 -m-1">
-        <span class="shrink-0">✓</span> All checks passed — this workflow is ready to deploy
+        <span class="shrink-0">✓</span> All checks passed. This workflow is ready to deploy
       </li>
     </ul>
   </div>

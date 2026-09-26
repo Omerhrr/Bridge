@@ -2,7 +2,7 @@
 
 Codes are ISO 639-1 where one exists (ISO 639-3 otherwise). The list leans
 towards languages spoken across Africa but covers major world languages too;
-the LLM translator is not limited to it — this is what the UI offers and what
+the LLM translator is not limited to it: this is what the UI offers and what
 validation accepts.
 """
 

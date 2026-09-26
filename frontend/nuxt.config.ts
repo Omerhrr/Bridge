@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
 
-  // Bridge is a dashboard/app (no SEO surface) — the SPA shell precaches in the
+  // Bridge is a dashboard/app (no SEO surface); the SPA shell precaches in the
   // service worker, giving instant loads, offline navigation and installability.
   ssr: false,
 
@@ -37,13 +37,13 @@ export default defineNuxtConfig({
     transpile: ['@vue-flow/core'],
   },
 
-  // Prerender the SPA shell so the service worker can precache it — this
+  // Prerender the SPA shell so the service worker can precache it; this
   // makes offline navigation (workbox navigateFallback '/') actually work.
   nitro: {
     prerender: { routes: ['/'] },
   },
 
-  // The client calls same-origin /api/v1 — server/routes/api/[[...path]].ts
+  // The client calls same-origin /api/v1; server/routes/api/[[...path]].ts
   // forwards to the backend at NUXT_API_TARGET (runtime env, no rebuild needed).
   // In dev this replaces the old devProxy; in production it is the API path.
   runtimeConfig: {
@@ -60,7 +60,7 @@ export default defineNuxtConfig({
     includeAssets: ['favicon.svg', 'favicon.ico', 'icons/apple-touch-icon.png'],
     manifest: {
       id: '/',
-      name: 'Bridge — Communication without barriers',
+      name: 'Bridge: Communication without barriers',
       short_name: 'Bridge',
       description:
         'Visual communication automation: build voice, SMS and USSD workflows with AI translation so people can communicate across language and connectivity barriers.',
@@ -103,7 +103,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Bridge — Communication without barriers',
+      title: 'Bridge: Communication without barriers',
       htmlAttrs: { lang: 'en' },
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },

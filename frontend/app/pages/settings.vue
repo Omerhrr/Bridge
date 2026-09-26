@@ -13,7 +13,7 @@ const error = ref('')
 const copied = ref('')
 
 const modeOptions = [
-  { key: 'auto' as const, icon: Laptop, title: 'Auto', description: 'Follows your screen size — desktop UI on large screens, mobile UI on phones' },
+  { key: 'auto' as const, icon: Laptop, title: 'Auto', description: 'Follows your screen size: desktop UI on large screens, mobile UI on phones' },
   { key: 'mobile' as const, icon: Smartphone, title: 'Mobile', description: 'Bottom navigation, touch-sized controls, bottom sheets in the builder' },
   { key: 'desktop' as const, icon: Monitor, title: 'Desktop', description: 'Top navigation and the three-column workflow builder, even on small screens' },
 ]
@@ -64,7 +64,7 @@ async function copy(value: string, key: string) {
         </span>
         <div>
           <h2 class="text-sm font-semibold">Appearance</h2>
-          <p class="text-xs text-muted">Choose how Bridge presents itself — the setting is saved on this device</p>
+          <p class="text-xs text-muted">Choose how Bridge presents itself; the setting is saved on this device</p>
         </div>
         <span class="pill-signal ml-auto capitalize">{{ dm.mode.value }} mode active</span>
       </div>
@@ -158,7 +158,7 @@ async function copy(value: string, key: string) {
             </div>
             <div class="flex justify-between gap-4">
               <dt class="text-muted">Model</dt>
-              <dd class="font-medium">{{ status.ai.model || '—' }}</dd>
+              <dd class="font-medium">{{ status.ai.model || 'n/a' }}</dd>
             </div>
             <div class="flex justify-between gap-4">
               <dt class="text-muted">Environment</dt>

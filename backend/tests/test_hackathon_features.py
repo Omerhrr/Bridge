@@ -179,7 +179,7 @@ def test_sms_airtime_reward_flow(client):
 
 
 def test_ussd_completed_without_end_screen_closes_session(client):
-    """A run finishing without an ussd_end node must reply END, never CON —
+    """A run finishing without an ussd_end node must reply END, never CON;
     otherwise Africa's Talking holds the session open until timeout with no
     waiting run left to answer the next callback."""
     definition = {

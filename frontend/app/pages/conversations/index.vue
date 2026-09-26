@@ -28,7 +28,7 @@ function formatWhen(value: string) {
   <div>
     <div class="mb-5">
       <h1 class="text-xl font-semibold tracking-tight">Conversations</h1>
-      <p class="text-sm text-muted mt-0.5">Every communication session through Bridge — calls, SMS and their translations</p>
+      <p class="text-sm text-muted mt-0.5">Every communication session through Bridge: calls, SMS and their translations</p>
     </div>
 
     <p v-if="error" class="card p-4 text-sm text-error bg-error-soft border-error/40 mb-4">{{ error }}</p>

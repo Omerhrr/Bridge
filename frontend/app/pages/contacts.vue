@@ -87,7 +87,7 @@ onMounted(() => Promise.all([load(), loadLanguages()]))
     <div class="mb-5">
       <h1 class="text-xl font-semibold tracking-tight">Contacts</h1>
       <p class="text-sm text-muted mt-0.5">
-        People Bridge talks to and the language each one reads. Languages are learned automatically from their messages — or set them here.
+        People Bridge talks to and the language each one reads. Languages are learned automatically from their messages, or set them here.
       </p>
     </div>
 
@@ -165,7 +165,7 @@ onMounted(() => Promise.all([load(), loadLanguages()]))
                 <span v-if="c.partner_number" class="inline-flex items-center gap-1 text-ink">
                   <ArrowLeftRight class="w-3.5 h-3.5 text-signal" /> {{ c.partner_number }}
                 </span>
-                <span v-else class="text-muted">—</span>
+                <span v-else class="text-muted">n/a</span>
               </td>
               <td class="px-3 py-2.5 hidden sm:table-cell text-right tabular-nums text-muted">{{ c.message_count }}</td>
               <td class="px-5 py-2.5">

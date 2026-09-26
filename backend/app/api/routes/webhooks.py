@@ -162,7 +162,7 @@ async def africastalking_voice(
         b_number=destinationNumber,
     )
     # Africa's Talking reads the raw response body as Voice XML, so it must be
-    # returned as XML — not wrapped in a JSON object.
+    # returned as XML, not wrapped in a JSON object.
     if run is None:
         return _voice_xml("No workflow is active. Goodbye.")
 
@@ -227,7 +227,7 @@ async def africastalking_ussd(
         prefix = "CON"
     elif status_value == "completed":
         # A run that finished without an explicit ussd_end node has nothing
-        # waiting to consume the next callback — always close the session so
+        # waiting to consume the next callback; always close the session so
         # Africa's Talking does not hold it open until timeout.
         prefix = "END"
     else:

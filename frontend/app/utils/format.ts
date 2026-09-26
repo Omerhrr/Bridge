@@ -1,7 +1,7 @@
 /** Utility helpers shared across pages. */
 
 export function formatDateTime(value?: string | null): string {
-  if (!value) return '—'
+  if (!value) return 'n/a'
   const d = new Date(value)
   return d.toLocaleString(undefined, {
     month: 'short',
@@ -13,13 +13,13 @@ export function formatDateTime(value?: string | null): string {
 }
 
 export function formatTime(value?: string | null): string {
-  if (!value) return '—'
+  if (!value) return 'n/a'
   const d = new Date(value)
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 export function formatDuration(startedAt?: string | null, finishedAt?: string | null): string {
-  if (!startedAt) return '—'
+  if (!startedAt) return 'n/a'
   const end = finishedAt ? new Date(finishedAt).getTime() : Date.now()
   const seconds = (end - new Date(startedAt).getTime()) / 1000
   if (seconds < 1) return `${(seconds * 1000).toFixed(0)}ms`
@@ -28,11 +28,11 @@ export function formatDuration(startedAt?: string | null, finishedAt?: string | 
 }
 
 export function maskNumber(number?: string | null): string {
-  if (!number) return '—'
+  if (!number) return 'n/a'
   if (number.length <= 6) return number
   return `${number.slice(0, 5)}…${number.slice(-3)}`
 }
 
 export function shortId(id?: string | null): string {
-  return id ? id.replace(/^run_/, '').slice(0, 8) : '—'
+  return id ? id.replace(/^run_/, '').slice(0, 8) : 'n/a'
 }

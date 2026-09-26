@@ -1,7 +1,7 @@
 """Messaging records: the unified message log and relay profiles.
 
 New tables only (no ALTERs on existing ones) so `create_all` upgrades an
-existing database — including the one already running on Render — safely.
+existing database, including the one already running on Render, safely.
 """
 from datetime import datetime
 

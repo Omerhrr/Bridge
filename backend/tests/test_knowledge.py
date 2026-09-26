@@ -19,7 +19,7 @@ from app.modules.knowledge import assistant as assistant_module  # noqa: E402
 from app.modules.knowledge import ingest  # noqa: E402
 from app.modules.knowledge.assistant import verify_answer  # noqa: E402
 
-FAQ = """Mama Mboga Grocers — Frequently asked questions
+FAQ = """Mama Mboga Grocers: Frequently asked questions
 
 Opening hours: We are open Monday to Saturday from 8am to 7pm. We are closed on Sundays.
 

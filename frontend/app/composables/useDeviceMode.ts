@@ -1,6 +1,6 @@
 /** Device mode system (spec section 18 adaptation).
  *
- * Bridge ships two tuned UI modes — desktop and mobile — plus an automatic
+ * Bridge ships two tuned UI modes (desktop and mobile) plus an automatic
  * mode that follows the viewport. The preference is explicit (not just media
  * queries) so the app "works best in both worlds":
  *
@@ -27,7 +27,7 @@ export function useDeviceMode() {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved === 'auto' || saved === 'mobile' || saved === 'desktop') pref.value = saved
     } catch {
-      /* storage unavailable (private mode) — keep auto */
+      /* storage unavailable (private mode); keep auto */
     }
     const query = window.matchMedia('(max-width: 1023px)')
     const apply = () => { viewportMobile.value = query.matches }

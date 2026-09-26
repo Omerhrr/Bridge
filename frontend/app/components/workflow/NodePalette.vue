@@ -2,8 +2,8 @@
 import type { NodeMeta } from '~/types'
 
 /** Node palette grouped by category (spec section 20).
- *  variant="panel": fixed desktop side panel — nodes are drag-and-drop.
- *  variant="sheet": mobile bottom sheet — nodes are tap-to-add and emit `add`. */
+ *  variant="panel": fixed desktop side panel; nodes are drag-and-drop.
+ *  variant="sheet": mobile bottom sheet; nodes are tap-to-add and emit `add`. */
 const props = defineProps<{ variant?: 'panel' | 'sheet' }>()
 const emit = defineEmits<{ (e: 'add', type: string): void }>()
 
@@ -66,7 +66,7 @@ function onDragStart(event: DragEvent, node: NodeMeta) {
         </div>
       </div>
       <p v-if="!grouped.length && store.nodeTypes.length" class="text-sm text-muted p-2">No nodes match "{{ search }}".</p>
-      <p v-if="!store.nodeTypes.length" class="text-sm text-muted p-2">Node library unavailable — backend offline?</p>
+      <p v-if="!store.nodeTypes.length" class="text-sm text-muted p-2">Node library unavailable: backend offline?</p>
     </div>
   </aside>
 </template>

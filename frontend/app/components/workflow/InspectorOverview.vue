@@ -14,7 +14,7 @@ const props = defineProps<{ workflow?: { name: string; description: string; stat
     <ul class="text-sm text-muted space-y-2 list-disc pl-4">
       <li>Drag a node from the palette onto the canvas.</li>
       <li>Connect nodes by dragging from the right handle to the next node.</li>
-      <li>Select a node to configure it here — the inspector changes per node type.</li>
+      <li>Select a node to configure it here. The inspector changes per node type.</li>
       <li>Run <span class="font-medium text-ink">Validate</span> to catch problems, then <span class="font-medium text-ink">Deploy</span> to make the workflow live.</li>
       <li>Use <span class="font-medium text-ink">Test</span> to simulate a trigger and trace every step.</li>
     </ul>

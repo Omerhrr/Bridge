@@ -16,7 +16,7 @@ const KINDS: { kind: KnowledgeKind; label: string; icon: any; hint: string }[] =
   { kind: 'google_doc', label: 'Google Doc', icon: FileText, hint: "Share the doc as 'Anyone with the link can view'." },
   { kind: 'google_sheet', label: 'Google Sheet', icon: Sheet, hint: "Price lists, stock, branches… Share as 'Anyone with the link can view'. Include ?gid= for a specific tab." },
   { kind: 'database', label: 'Database', icon: Database, hint: 'PostgreSQL or MySQL. Bridge runs your SELECT in a read-only session; the connection string is encrypted and never shown again.' },
-  { kind: 'text', label: 'Text / FAQ', icon: NotebookPen, hint: 'Paste FAQs, policies, opening hours, prices — anything customers ask about.' },
+  { kind: 'text', label: 'Text / FAQ', icon: NotebookPen, hint: 'Paste FAQs, policies, opening hours, prices: anything customers ask about.' },
 ]
 const kindMeta = (kind: string) => KINDS.find((k) => k.kind === kind) ?? KINDS[4]!
 
@@ -176,12 +176,12 @@ async function ask() {
 
 const REASONS: Record<string, string> = {
   answered: 'Answered from your sources',
-  not_in_sources: 'Not in your sources — fallback sent',
-  unverified: 'Answer could not be verified against your sources — fallback sent',
-  no_match: 'Nothing relevant found — fallback sent',
-  no_knowledge: 'No ready sources yet — fallback sent',
-  ai_unavailable: 'AI provider unavailable — fallback sent',
-  not_a_question: 'Greeting — welcome message sent',
+  not_in_sources: 'Not in your sources, fallback sent',
+  unverified: 'Answer could not be verified against your sources, fallback sent',
+  no_match: 'Nothing relevant found, fallback sent',
+  no_knowledge: 'No ready sources yet, fallback sent',
+  ai_unavailable: 'AI provider unavailable, fallback sent',
+  not_a_question: 'Greeting, welcome message sent',
   disabled: 'Assistant is switched off',
 }
 
@@ -197,7 +197,7 @@ function when(value: string | null) {
       <div>
         <h1 class="text-xl font-semibold tracking-tight">Knowledge</h1>
         <p class="text-sm text-muted mt-0.5 max-w-2xl">
-          Connect your business information. When customers text a question, Bridge answers in their language using only these sources — and says it doesn't know rather than guessing.
+          Connect your business information. When customers text a question, Bridge answers in their language using only these sources, and says it doesn't know rather than guessing.
         </p>
       </div>
       <span v-if="profile" :class="profile.available ? 'pill-success' : 'pill-warning'">
@@ -374,7 +374,7 @@ function when(value: string | null) {
             <h2 class="text-sm font-semibold">Test the assistant</h2>
           </div>
           <form @submit.prevent="ask">
-            <textarea v-model="question" rows="3" class="input h-auto py-2" placeholder="Ask like a customer would — in any language" />
+            <textarea v-model="question" rows="3" class="input h-auto py-2" placeholder="Ask like a customer would, in any language" />
             <button class="btn-primary w-full mt-2" :disabled="asking || !question.trim()">
               <Loader2 v-if="asking" class="w-4 h-4 animate-spin" /> {{ asking ? 'Thinking…' : 'Ask' }}
             </button>

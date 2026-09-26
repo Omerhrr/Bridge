@@ -10,7 +10,7 @@ Pipeline
   4. Verify       Bridge checks the quotes really exist in the passages and
                   that every number in the answer appears in them. Anything
                   that fails verification is replaced by the business's
-                  fallback message — the customer never receives an
+                  fallback message: the customer never receives an
                   unsupported claim.
 """
 from __future__ import annotations
@@ -199,7 +199,7 @@ class KnowledgeAssistant:
             for chunk, name in retrieved
         ]
         context = "\n\n".join(
-            f"[S{i + 1}] {chunk.title} — {chunk.location}\n{chunk.content}" for i, (chunk, _) in enumerate(retrieved)
+            f"[S{i + 1}] {chunk.title} ({chunk.location})\n{chunk.content}" for i, (chunk, _) in enumerate(retrieved)
         )
         business = profile.name or "this business"
         about = f" About the business: {profile.description.strip()}" if profile.description.strip() else ""
