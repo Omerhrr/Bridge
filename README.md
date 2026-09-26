@@ -8,9 +8,12 @@ A communication event enters the system through one channel and can leave throug
 Phone Call → Speech → Speech-to-Text → Translation → Text-to-Speech → Phone Call
 SMS → Language Detection → Translation → SMS
 Voice → Text → Translation → SMS
+WhatsApp → Knowledge Assistant → WhatsApp
 ```
 
-The telecom capability itself is the product. End users only need a normal phone.
+The telecom capability itself is the product. End users only need a normal phone —
+and on top of that, a business's own knowledge base can now answer customers over
+SMS, WhatsApp, or any website/app that calls Bridge's API directly.
 
 ---
 
@@ -27,12 +30,43 @@ while serving each individual track:
 | Service & network notifications | Any workflow can fan out `Send SMS` alerts (outage notices, account activity) conditionally via `Condition`/`Switch`. |
 | Airtime & customer incentives | `Send Airtime` node calls the AT Airtime API — loyalty rewards, referral bonuses, promo campaigns (see the seeded *SMS Airtime Reward* demo). |
 | Mobile connectivity solutions | Roadmap: a `Send Data` node using the Mobile Data API alongside airtime incentives. |
-| Smart communication platforms | The node graph itself: Voice + SMS + USSD + Airtime + AI in one engine, one conversation history, one observability trail. |
+| Smart communication platforms | The node graph itself: Voice + SMS + USSD + WhatsApp + Airtime + AI in one engine, one conversation history, one observability trail. |
 
 Demo script (no telecom credentials needed — stub providers simulate the
 operator): activate a workflow, then `curl` the webhooks as shown in
 "Running locally" — USSD returns real `CON`/`END` bodies and SMS runs the
 full translate-and-reply loop.
+
+## Knowledge assistant, API keys & WhatsApp
+
+Bridge doubled down on the "answer customers automatically" story with three
+connected additions on top of the workflow engine:
+
+- **Knowledge assistant** (the **Knowledge** page): point Bridge at a
+  business's own information — a website, a Google Doc/Sheet, a read-only
+  database query, or pasted text/FAQ — and it answers customer questions
+  grounded *only* in those sources. Every answer must quote its evidence
+  verbatim and every number in it must appear in the source text; anything
+  that fails that check is replaced by the business's own fallback message
+  instead of a hallucinated answer. Reachable three ways: automatically over
+  SMS (the `ASK <question>` command, or any message outside an open Bridge
+  relay chat), from any workflow via the **Answer from Knowledge** node, or
+  from the outside world via the API key below.
+- **API keys** (Knowledge page → *Connect your website chatbot*): generate a
+  `brdg_…` key (shown once, SHA-256 hashed at rest) and call
+  `POST /api/v1/public/assistant/ask` with an `X-Api-Key` header from any
+  external site or app — no dashboard login needed. Rate-limited to 30
+  requests/minute per key; CORS on that one route accepts any origin (the
+  rest of the API stays restricted to `CORS_ORIGINS`) since the caller is
+  meant to be an arbitrary customer website.
+- **WhatsApp channel** (Meta Cloud API): a second live inbound/outbound
+  channel alongside Africa's Talking SMS/voice/USSD, with its own
+  **Incoming WhatsApp** trigger and **Send WhatsApp** node in the workflow
+  builder. Unlike the Africa's Talking credentials, WhatsApp's phone number
+  ID, access token and webhook verify token are entered by the business
+  owner on the **Settings** page and stored encrypted in the database
+  (`whatsapp_settings` table) — no backend redeploy or Render env var needed
+  to connect or reconfigure a number.
 
 ## Mobile mode · desktop mode · installable PWA (spec section 18)
 
@@ -71,8 +105,8 @@ PWA artifacts: `frontend/public/icons/` (192/512/maskable/apple-touch),
 | Backend    | FastAPI (modular monolith), SQLAlchemy 2 async, Pydantic v2      |
 | Frontend   | Nuxt 4 + Vue 3 (SPA), Vue Flow (visual builder), Pinia, Tailwind CSS 4, PWA via `@vite-pwa/nuxt` |
 | Database   | SQLite (local dev) / PostgreSQL (production via `DATABASE_URL`)  |
-| Telecom    | Africa's Talking (Voice, SMS, Webhooks) — provider-adapter based |
-| AI         | STT / Translation / TTS / Language detection behind service interfaces (stub provider built in) |
+| Telecom    | Africa's Talking (Voice, SMS, USSD, Airtime) + WhatsApp (Meta Cloud API) — provider-adapter based, stub providers for offline dev |
+| AI         | STT / Translation / TTS / Language detection / grounded Q&A (knowledge assistant) behind service interfaces (stub provider built in) |
 | Deployment | Render (`render.yaml` included)                                  |
 
 ## Project structure (spec section 57)
@@ -80,20 +114,27 @@ PWA artifacts: `frontend/public/icons/` (192/512/maskable/apple-touch),
 ```text
 backend/
   app/
-    core/        config · database · security · logging
-    api/routes/  auth · workflows · runs · conversations · communications · webhooks · dashboard · settings
+    core/        config · database · security · logging · crypto (encrypted secrets at rest)
+    api/routes/  auth · workflows · runs · conversations · communications · messaging ·
+                 knowledge · api_keys · public (X-Api-Key ask endpoint) · webhooks ·
+                 dashboard · settings_meta
     modules/
-      workflows/       models · schemas · service · engine · registry · validator · nodes/*
-      communications/  voice · sms · service (Africa's Talking + stub providers)
+      workflows/       models · schemas · service · engine · registry · validator ·
+                       nodes/* (trigger · call · sms · whatsapp · knowledge · condition ·
+                       ussd · airtime · end)
+      communications/  voice · sms · whatsapp · whatsapp_config · airtime · service
+                       (Africa's Talking + Meta Cloud API + stub providers)
+      knowledge/       models · service · assistant (grounded Q&A) · ingest · apikeys · search
+      messaging/       models · service (translated relay, ASK command, contacts)
       ai/              speech · translation · synthesis · service
       conversations/   models · service · schemas
       contacts/        models · service
     main.py  seed.py
-  tests/
+  tests/       80+ tests: validator · workflows · knowledge · api keys · whatsapp · auth · messaging
 frontend/
   app/
     components/  workflow/ (canvas · palette · inspector · custom nodes) · dashboard/
-    pages/       dashboard · workflows · conversations · runs · settings
+    pages/       dashboard · workflows · conversations · runs · knowledge · settings
     composables/ stores/ types/ utils/
 render.yaml
 ```
@@ -120,7 +161,8 @@ The demo is seeded on first start with four workflows:
 ### Useful commands
 
 ```bash
-# backend tests (14 tests: validator + API + hackathon features)
+# backend tests (80+ tests: validator, workflows, knowledge assistant, API keys,
+# WhatsApp channel, auth, messaging/relay, hackathon features)
 cd backend && python -m pytest tests/ -q
 
 # run backend manually
@@ -138,16 +180,22 @@ cd frontend && npm run build && node .output/server/index.mjs
 - `GET /health`
 - `GET|POST /workflows`, `GET|PATCH|DELETE /workflows/{id}`
 - `POST /workflows/{id}/versions` — save a new immutable version (spec §31)
-- `POST /workflows/validate`, `POST /workflows/{id}/validate` — pre-deploy validation (spec §23)
+- `POST /workflows/validate`, `POST /workflows/{id}/validate` — pre-deploy validation (spec §23), including a warning when two active workflows share a trigger
 - `POST /workflows/{id}/test-run` — simulate a trigger from the builder Test button (spec §20)
 - `GET /workflows/node-types` — node registry for the palette/inspector
 - `GET /runs`, `GET /runs/{id}` — execution history (spec §29)
 - `GET /conversations`, `GET /conversations/{id}`, `GET /conversations/{id}/timeline` (spec §28)
 - `GET /calls`, `GET /messages`
+- `GET /languages`, `GET|POST /contacts`, `PATCH|DELETE /contacts/{id}`, `POST /messages/send`, `POST /messages/translate`, `GET /messages/log`, `GET /messages/info` — Bridge relay, contacts and broadcast messaging
+- `GET|PUT /knowledge/profile`, `GET|POST /knowledge/sources`, `POST /knowledge/sources/{id}/sync`, `GET /knowledge/sources/{id}/chunks`, `DELETE /knowledge/sources/{id}`, `POST /knowledge/ask`, `GET /knowledge/queries` — knowledge base management and test console
+- `GET|POST /api-keys`, `DELETE /api-keys/{id}` — manage keys for the public assistant endpoint (dashboard-authenticated)
+- `POST /public/assistant/ask` — **`X-Api-Key`-authenticated**, not dashboard JWT; ask the knowledge assistant from any external site/app; permissive CORS, 30 req/min per key
 - `GET /dashboard/summary`
-- `GET /settings/providers` — non-sensitive provider status
+- `GET /settings/providers` — non-sensitive provider status (Africa's Talking, WhatsApp, AI)
+- `GET|PUT /settings/whatsapp` — read/save the business's own WhatsApp (Meta Cloud API) credentials; the access token is write-only (encrypted at rest, never returned)
 - `POST /auth/register`, `POST /auth/login`
 - `POST /webhooks/africastalking/voice`, `POST /webhooks/africastalking/sms`, `POST /webhooks/africastalking/ussd` — telecom events → workflow triggers (spec §25), with idempotency (spec §45) and USSD session resume
+- `GET|POST /webhooks/whatsapp` — Meta's verification handshake (GET) and incoming message events (POST) → `incoming_whatsapp` workflow trigger, with the same idempotency handling as SMS
 
 ## Africa's Talking setup
 
@@ -159,6 +207,24 @@ cd frontend && npm run build && node .output/server/index.mjs
    - `https://<api-host>/api/v1/webhooks/africastalking/voice`
    - `https://<api-host>/api/v1/webhooks/africastalking/sms`
    - `https://<api-host>/api/v1/webhooks/africastalking/ussd` — callback URL plus service code, e.g. `*384*1234#`
+
+## WhatsApp setup (Meta Cloud API)
+
+Unlike Africa's Talking, WhatsApp credentials are **not** backend environment
+variables — they're entered by the business owner on the **Settings** page
+and stored encrypted in the database, so a deployment can be reconfigured
+(or handed to a different business) without a redeploy:
+
+1. Create a Meta developer app with the WhatsApp product, grab its **phone
+   number ID** and a **permanent access token** (a System User token with
+   access to the app).
+2. On Bridge's Settings page, paste the phone number ID and access token in,
+   and pick any secret string as the **verify token**.
+3. In Meta's dashboard (WhatsApp → Configuration), set the webhook URL shown
+   on the Settings page (`https://<api-host>/api/v1/webhooks/whatsapp`),
+   enter the same verify token, and subscribe to the `messages` field.
+4. Build a flow in Workflows using the **Incoming WhatsApp** trigger and
+   **Send WhatsApp** node — same builder, same engine as SMS/voice/USSD.
 
 ## Deploying to Render
 
