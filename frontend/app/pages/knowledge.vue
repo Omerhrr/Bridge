@@ -2,9 +2,10 @@
 import {
   Globe, FileText, Sheet, Database, NotebookPen, Plus, RefreshCw, Trash2, ChevronDown,
   Loader2, CheckCircle2, AlertTriangle, MessageCircleQuestion, ShieldCheck, Quote, X,
+  Code2, Copy, Check, KeyRound,
 } from 'lucide-vue-next'
 import type {
-  AskResult, BusinessProfile, KnowledgeChunk, KnowledgeKind, KnowledgeQuery, KnowledgeSource,
+  ApiKey, ApiKeyCreated, AskResult, BusinessProfile, KnowledgeChunk, KnowledgeKind, KnowledgeQuery, KnowledgeSource,
 } from '~/types'
 
 definePageMeta({ layout: 'default' })
@@ -188,6 +189,80 @@ const REASONS: Record<string, string> = {
 function when(value: string | null) {
   if (!value) return 'never'
   return new Date(value).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+// ------------------------------------------------------------- API keys
+const config = useRuntimeConfig()
+const publicAskUrl = computed(() => {
+  const apiBase = (config.public.apiBase as string) || ''
+  const base = apiBase.startsWith('http') ? apiBase : `${window?.location?.origin || ''}/api/v1`
+  return `${base}/public/assistant/ask`
+})
+
+const apiKeys = ref<ApiKey[]>([])
+const keysLoading = ref(true)
+const keysError = ref('')
+const newKeyName = ref('')
+const creatingKey = ref(false)
+// Shown once, right after creation; never fetched again.
+const justCreatedKey = ref<ApiKeyCreated | null>(null)
+const copied = ref(false)
+
+async function loadApiKeys() {
+  try {
+    apiKeys.value = await api<ApiKey[]>('/api-keys')
+    keysError.value = ''
+  } catch {
+    keysError.value = 'Could not load API keys.'
+  } finally {
+    keysLoading.value = false
+  }
+}
+onMounted(loadApiKeys)
+
+async function createApiKey() {
+  creatingKey.value = true
+  justCreatedKey.value = null
+  try {
+    const created = await api<ApiKeyCreated>('/api-keys', { method: 'POST', body: { name: newKeyName.value.trim() } })
+    justCreatedKey.value = created
+    apiKeys.value = [created, ...apiKeys.value]
+    newKeyName.value = ''
+  } catch {
+    keysError.value = 'Could not create the key.'
+  } finally {
+    creatingKey.value = false
+  }
+}
+
+async function revokeApiKey(key: ApiKey) {
+  if (!window.confirm(`Revoke "${key.name || key.prefix}"? Anything using it will stop working immediately.`)) return
+  const updated = await api<ApiKey>(`/api-keys/${key.id}`, { method: 'DELETE' })
+  Object.assign(key, updated)
+  if (justCreatedKey.value?.id === key.id) justCreatedKey.value = null
+}
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 2000)
+  } catch {
+    // Clipboard API unavailable; the key/snippet stays selectable in the UI.
+  }
+}
+
+function snippet(key: string) {
+  return `<script>
+async function askBridge(question) {
+  const res = await fetch('${publicAskUrl.value}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': '${key}' },
+    body: JSON.stringify({ question }),
+  })
+  return res.json() // { answered, answer, language }
+}
+<\/script>`
 }
 </script>
 
@@ -435,6 +510,59 @@ function when(value: string | null) {
               <button class="btn-primary" :disabled="savingProfile">{{ savingProfile ? 'Saving…' : 'Save profile' }}</button>
             </div>
           </form>
+        </section>
+
+        <!-- API keys: connect a website chatbot or other integration -->
+        <section class="card p-5">
+          <div class="flex items-center gap-2 mb-1">
+            <Code2 class="w-4 h-4 text-signal" />
+            <h2 class="text-sm font-semibold">Connect your website chatbot</h2>
+          </div>
+          <p class="text-xs text-muted mb-3 leading-relaxed">
+            Generate a key so your own website, app, or another chatbot can ask this same assistant a question over a plain HTTP endpoint, independent of this dashboard login.
+          </p>
+
+          <p v-if="keysError" class="text-xs text-error mb-2">{{ keysError }}</p>
+
+          <form class="flex gap-2 mb-3" @submit.prevent="createApiKey">
+            <input v-model="newKeyName" class="input" placeholder="e.g. Marketing site widget" maxlength="255">
+            <button class="btn-primary shrink-0" :disabled="creatingKey">
+              <Plus class="w-4 h-4" /> {{ creatingKey ? 'Creating…' : 'New key' }}
+            </button>
+          </form>
+
+          <div v-if="justCreatedKey" class="rounded-lg border border-signal/30 bg-signal-soft/60 p-3 mb-3">
+            <p class="text-xs font-medium mb-1.5">Copy this key now, it won't be shown again</p>
+            <div class="flex items-center gap-2">
+              <code class="text-xs bg-surface border border-line rounded px-2 py-1.5 flex-1 overflow-x-auto whitespace-nowrap">{{ justCreatedKey.key }}</code>
+              <button type="button" class="btn-ghost h-8 w-8 px-0 shrink-0" title="Copy key" @click="copyText(justCreatedKey.key)">
+                <Check v-if="copied" class="w-4 h-4 text-success" /> <Copy v-else class="w-4 h-4" />
+              </button>
+            </div>
+            <details class="mt-2">
+              <summary class="text-xs text-signal cursor-pointer select-none">Show embed snippet</summary>
+              <pre class="text-[11px] mt-2 bg-surface border border-line rounded p-2 overflow-x-auto whitespace-pre-wrap">{{ snippet(justCreatedKey.key) }}</pre>
+              <p class="text-[11px] text-muted mt-1">POST <code>{{ publicAskUrl }}</code> with header <code>X-Api-Key</code>. Callable from any origin; rate-limited to 30 requests/minute per key.</p>
+            </details>
+          </div>
+
+          <div v-if="keysLoading" class="h-10 rounded bg-canvas animate-pulse" />
+          <ul v-else-if="apiKeys.length" class="divide-y divide-line -mx-5">
+            <li v-for="k in apiKeys" :key="k.id" class="px-5 py-2.5 flex items-center gap-2">
+              <span class="grid place-items-center w-7 h-7 rounded-md bg-signal-soft text-signal shrink-0">
+                <KeyRound class="w-3.5 h-3.5" />
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium truncate">{{ k.name || 'Unnamed key' }}</p>
+                <p class="text-[11px] text-muted font-mono">{{ k.prefix }}… · {{ k.request_count }} request{{ k.request_count === 1 ? '' : 's' }} · last used {{ when(k.last_used_at) }}</p>
+              </div>
+              <span v-if="k.revoked_at" class="pill-neutral">Revoked</span>
+              <button v-else class="btn-ghost h-8 w-8 px-0 hover:text-error" title="Revoke" @click="revokeApiKey(k)">
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </li>
+          </ul>
+          <p v-else class="text-xs text-muted">No keys yet. Create one to get an endpoint and key for your site.</p>
         </section>
       </div>
     </div>

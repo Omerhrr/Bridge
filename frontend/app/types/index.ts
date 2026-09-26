@@ -274,6 +274,22 @@ export interface AskResult {
   sources: { source_id: number; source_name: string; title: string; location: string; excerpt: string }[]
 }
 
+// ---- API keys (public assistant access) -----------------------------------
+
+export interface ApiKey {
+  id: number
+  name: string
+  prefix: string
+  revoked_at: string | null
+  last_used_at: string | null
+  request_count: number
+  created_at: string
+}
+
+export interface ApiKeyCreated extends ApiKey {
+  key: string
+}
+
 export interface KnowledgeQuery {
   id: number
   phone_number: string | null

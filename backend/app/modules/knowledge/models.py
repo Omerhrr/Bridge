@@ -52,6 +52,25 @@ class KnowledgeChunk(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class ApiKey(Base):
+    """A key issued so an external site or app (a chatbot widget, a backend
+    integration) can call the public Ask Assistant endpoint without signing
+    in to the Bridge dashboard. Only a hash of the key is stored; the
+    plaintext is shown once, at creation."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), default="")
+    # First few characters of the key, kept for display ("brdg_a1b2...").
+    prefix: Mapped[str] = mapped_column(String(16))
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    request_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class KnowledgeQuery(Base):
     """Every question the assistant handled; unanswered ones tell the
     business owner which information to add."""
