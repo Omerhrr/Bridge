@@ -63,6 +63,11 @@ class AfricaTalkingSMSProvider(SMSProvider):
             resp.raise_for_status()
             data = resp.json()
         entry = (data.get("SMSMessageData", {}).get("Recipients") or [{}])[0]
+        # AT answers 201 even when it rejects the message; the real outcome is
+        # the per-recipient statusCode (100 processed, 101 sent, 102 queued).
+        if entry.get("statusCode") not in (100, 101, 102):
+            reason = entry.get("status") or data.get("SMSMessageData", {}).get("Message") or data
+            raise RuntimeError(f"Africa's Talking rejected the SMS: {reason}")
         log_event(logger, "sms.sent", provider="africastalking", to=to, messageId=entry.get("messageId"))
         return SmsSendResult(
             message_id=str(entry.get("messageId", "")),

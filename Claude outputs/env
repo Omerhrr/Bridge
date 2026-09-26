@@ -1,0 +1,36 @@
+# Bridge backend configuration — generated for the Africa's Talking sandbox setup.
+# This file is git-ignored; never commit it.
+
+# Application
+BRIDGE_ENV=development
+SECRET_KEY=pln2Hi8d3GWxC7QtqJN25TGQBwoYbnJx9-pAtQAh-bZ9OexSgAsk5T2IGfIAmA2_
+CORS_ORIGINS=http://localhost:3000,https://bridge.rogan.live
+SEED_DEMO_DATA=true
+
+# Database (SQLite locally, PostgreSQL on Render)
+DATABASE_URL=sqlite+aiosqlite:///./bridge.db
+
+# Auth
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# Africa's Talking (spec section 25)
+# "sandbox" is the fixed username for every AT sandbox app — no need to change it.
+AT_USERNAME=sandbox
+# Paste your sandbox API key from https://account.africastalking.com/apps/sandbox/settings/api-key
+AT_API_KEY=REPLACE_WITH_YOUR_SANDBOX_API_KEY
+# Leave blank in sandbox unless you were issued a virtual number for Voice testing.
+AT_PHONE_NUMBER=
+# Leave blank in sandbox — outgoing SMS uses the shared shortcode automatically.
+AT_SENDER_ID=
+AT_SANDBOX=true
+
+# AI provider (spec section 26) - "stub" or e.g. "openai"
+AI_PROVIDER=stub
+AI_API_KEY=
+AI_BASE_URL=
+AI_STT_MODEL=
+AI_TRANSLATION_MODEL=
+AI_TTS_MODEL=
+
+# Supported languages for translate-node validation (comma separated)
+SUPPORTED_LANGUAGES=en,ha,sw,yo,ig,am,fr,ar,zu

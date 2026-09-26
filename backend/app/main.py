@@ -1,11 +1,13 @@
 """Bridge FastAPI application entrypoint (spec section 14)."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+import time
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.logging import setup_logging
+from app.core.logging import get_logger, log_event, setup_logging
 from app.api.routes import (
     auth,
     communications,
@@ -18,6 +20,7 @@ from app.api.routes import (
 )
 
 setup_logging()
+_http_logger = get_logger("bridge.http")
 
 
 @asynccontextmanager
@@ -46,6 +49,22 @@ app.add_middleware(
 )
 
 API_PREFIX = "/api/v1"
+
+
+@app.middleware("http")
+async def log_webhook_timing(request: Request, call_next):
+    """Log status and latency of telecom webhooks (visible in Render logs) —
+    USSD gateways time out after a few seconds, so this is the first thing
+    to check when a session shows the provider's generic error screen."""
+    if "/webhooks/" not in request.url.path:
+        return await call_next(request)
+    started = time.perf_counter()
+    response = await call_next(request)
+    log_event(
+        _http_logger, "webhook.responded", path=request.url.path,
+        status=response.status_code, ms=round((time.perf_counter() - started) * 1000),
+    )
+    return response
 
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(workflows.router, prefix=API_PREFIX)
