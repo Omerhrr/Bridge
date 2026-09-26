@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from app.core.config import settings
+from app.core.config import clean_sender_id, settings
 from app.core.logging import get_logger, log_event
 
 logger = get_logger("bridge.comms.sms")
@@ -51,8 +51,12 @@ class AfricaTalkingSMSProvider(SMSProvider):
             else "https://api.africastalking.com"
         )
         payload: dict = {"username": username, "to": to, "message": text}
-        if sender_id or settings.at_sender_id:
-            payload["from"] = sender_id or settings.at_sender_id
+        # Whatever produced this sender id (workflow config, a saved
+        # shortcode, or a webhook's own reported "to" value) might not be a
+        # clean token, and Africa's Talking rejects anything else outright.
+        sender = clean_sender_id(sender_id) or clean_sender_id(settings.at_sender_id)
+        if sender:
+            payload["from"] = sender
         headers = {
             "apiKey": settings.at_api_key,
             "Content-Type": "application/x-www-form-urlencoded",

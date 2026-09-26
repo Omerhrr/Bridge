@@ -1,7 +1,22 @@
 """Trigger nodes (spec section 11): entry points for telecom events."""
 from typing import Any
 
+from app.core.config import clean_sender_id, settings
 from app.modules.workflows.nodes.base import BaseNode, NodeResult
+
+
+def _clean_shortcode(raw: str) -> str:
+    """Resolve the shortcode to reply from for an incoming SMS.
+
+    A fixed shortcode set in the environment is trusted first, since it is
+    what the account is actually configured to send from; otherwise the
+    webhook's own "to" value is used. Either one is run through
+    ``clean_sender_id`` because both can arrive as more than a plain code
+    (a dashboard label like "Bridge (57000)", or a shortcode glued to the
+    recipient's own number), which Africa's Talking would otherwise reject
+    as an invalid sender id.
+    """
+    return clean_sender_id(settings.at_shortcode) or clean_sender_id(raw)
 
 
 class IncomingCallNode(BaseNode):
@@ -42,7 +57,9 @@ class IncomingSmsNode(BaseNode):
         ctx.variables["sender"] = payload.get("from") or "unknown"
         ctx.variables["text"] = payload.get("text", "")
         # The shortcode / number the SMS was sent to; replies go out from it.
-        ctx.variables["shortcode"] = payload.get("called") or config.get("phone_number", "")
+        ctx.variables["shortcode"] = _clean_shortcode(
+            payload.get("called") or config.get("phone_number", "")
+        )
         ctx.variables["channel"] = "sms"
         await ctx.record("sms.received", self, sender=ctx.variables["sender"])
         return NodeResult(outputs={"text": ctx.variables["text"]})

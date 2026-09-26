@@ -1,8 +1,35 @@
 """Application configuration via environment variables (spec section 14)."""
+import re
 from functools import lru_cache
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def clean_sender_id(raw: str) -> str:
+    """Reduce a raw sender-id/shortcode value to what Africa's Talking accepts.
+
+    Africa's Talking sender ids and shortcodes are a single alphanumeric
+    token. In practice this setting sometimes ends up holding the human
+    label shown on the Africa's Talking dashboard instead, such as
+    "Bridge (57000)" (a product name plus its shortcode in parentheses), or
+    the webhook's own "to" field gluing a shortcode and a phone number
+    together with a "+". Sending either of those straight to the API gets
+    every message rejected with "InvalidSenderId", so the value is reduced
+    to a single clean token before it is ever used to send.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    # "Bridge (57000)" -> the code called out in parentheses is what the
+    # account actually sends from.
+    parenthesized = re.search(r"\(([A-Za-z0-9]+)\)", raw)
+    if parenthesized:
+        return parenthesized.group(1)
+    # Otherwise keep only the first run of letters/digits, dropping
+    # anything glued on after a "+", comma, space, or other separator.
+    match = re.match(r"[A-Za-z0-9]+", raw)
+    return match.group(0) if match else ""
 
 
 # provider -> (base URL, default chat model)
@@ -126,7 +153,7 @@ class Settings(BaseSettings):
 
     @property
     def default_sms_sender(self) -> str | None:
-        return self.at_sender_id or self.at_shortcode or None
+        return clean_sender_id(self.at_sender_id) or clean_sender_id(self.at_shortcode) or None
 
 
 @lru_cache
